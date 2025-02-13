@@ -27,6 +27,16 @@ By focusing on our customers' needs we're building the flexible and sustainable 
 and services that they deserve. And we do that by empowering a diverse, resourceful, and creative 
 team of engineers that thrive on challenge and innovation.
 
+### How We Work
+* Collaboration & Knowledge Sharing - Engineers at Zego work closely with cross-functional teams to gather requirements,
+deliver well-structured solutions, and contribute to code reviews to ensure high-quality output.
+* Problem Solving & Innovation - We encourage analytical thinking and a proactive approach to tackling complex
+problems. Engineers are expected to contribute to discussions around optimization, scalability, and performance.
+* Continuous Learning & Growth - At Zego, there's loads of room to learn and grow. Engineers are encouraged to
+refine their skills, stay updated with best practices, and explore new technologies that enhance our products and services.
+* Ownership & Accountability - Our team members take ownership of their work, ensuring that solutions are reliable,
+scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
+
 ## Who should be taking this test?
 This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
 Ideally you have hands-on experience developing Python solutions using Object Oriented Programming methodologies in a commercial setting.
