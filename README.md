@@ -65,9 +65,9 @@ Extend this README to include a detailed discussion about your design decisions,
 the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
 
 # Instructions
-1. Fork the repo.
-2. Make changes as needed to satisfy the test requirements.
+1. Create a repo.
+2. Tackle the test.
 3. Push the code back.
-4. Tag us to review.
+4. Add us (@2014klee, @danyal-zego, @bogdangoie and @cypherlou) as collaborators and tag us to review.
 
 
