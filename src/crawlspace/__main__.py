@@ -1,24 +1,12 @@
 import argparse
 import asyncio
 
+from ._crawler import Crawler
 from .schemas import PageReport, SiteReport
 
 
 async def main(base_url: str) -> SiteReport:
-    return SiteReport(
-        pages=[
-            PageReport(
-                url="http://localhost:8888",
-                status=200,
-                links=["http://localhost:8888/empty-page"],
-            ),
-            PageReport(
-                url="http://localhost:8888/empty-page",
-                status=200,
-                links=[],
-            ),
-        ]
-    )
+    return await Crawler().crawl(base_url)
 
 
 if __name__ == "__main__":

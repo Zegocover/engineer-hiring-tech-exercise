@@ -17,3 +17,8 @@
 - Flesh out first BDD tests with expectations of how the user will want to interact with the application.
     - Used caddy and docker compose to serve a basic static site then created a pytest fixture
     - Implemented a module with hardcoded responses to pass the BDD tests knowing I can fill in the pieces as I go.
+
+- Implement Crawler class that will hide the complexity of the underlying pieces. 
+    - Implemented a unit test for the class, hard code response and replace hard coded response from the application with return from crawler class.
+    - Added `pytest-asyncio`. Have started with async methods as I can feel them coming in soon.
+    - Updated tasks collection with `unit` ad `test`
