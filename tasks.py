@@ -26,3 +26,14 @@ def static(c):
 @task()
 def bdd(c):
     c.run("pytest tests/bdd")
+
+
+@task()
+def unit(c):
+    c.run("pytest tests/unit")
+
+
+@task()
+def test(c):
+    unit(c)
+    bdd(c)
