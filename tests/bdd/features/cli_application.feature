@@ -6,13 +6,9 @@ Feature: Web Crawler
   And see the URLs of each page and the links found on them within the same domain.
 
   Scenario: Crawl a local website and list internal links
-    Given I have a base URL "http://localhost:8888"
+    Given I have a base URL for a website
     When I run the web crawler with the base URL
-    Then it should print the URL "http://localhost:8888"
-    And it should print all internal links found on "http://localhost:8888"
-    And for each internal link found on "http://localhost:8888"
-    Then it should print the URL of that link
-    And it should print all internal links found on that link
+    Then I should see a report of the URLs of each page and the links found on them within the same domain
 
   Scenario: Ignore external links from localhost
     Given I have a base URL "http://localhost:8888"

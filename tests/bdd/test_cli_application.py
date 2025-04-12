@@ -1,3 +1,6 @@
+from _given_steps import *
+from _then_steps import *
+from _when_steps import *
 from pytest_bdd import scenario
 
 

@@ -10,3 +10,6 @@
     - Add initial feature file by asking Gemini to generate a feature file based on the "The test" section of the README
     - Generate a test that runs but is red. Will build up the initial test using the happy path.
  
+- Add stubs for BDD test
+    - Feature file was a bit wordy and would mean a lot of faff for a simple comparison of a known fixture.
+    - Implemented stub steps to check the BDD test infrastructure is correct.
