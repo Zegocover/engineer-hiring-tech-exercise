@@ -22,3 +22,5 @@
     - Implemented a unit test for the class, hard code response and replace hard coded response from the application with return from crawler class.
     - Added `pytest-asyncio`. Have started with async methods as I can feel them coming in soon.
     - Updated tasks collection with `unit` ad `test`
+
+- Start building the implementation details of the the Crawler class. I have opted for dependency injection so that I can start with a basic mocked version of the object and ubild it up. Consequently, I have vroken the BDD test but I can rectify that building a hardcoded parser class on my next iteration.

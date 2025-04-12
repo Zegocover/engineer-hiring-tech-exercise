@@ -11,3 +11,10 @@ class PageReport:
 @dataclass
 class SiteReport:
     pages: list[PageReport] = field(default_factory=list)
+
+
+@dataclass
+class FetchResult:
+    url: str
+    status: int
+    text: str | None
