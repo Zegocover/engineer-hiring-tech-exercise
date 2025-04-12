@@ -1,0 +1,11 @@
+# Pyre logs
+**/.pyre
+
+# Ruff caching
+**/.ruff_cache
+
+# Python Venv
+**/.venv
+
+# Python caching
+**/__pycache__
