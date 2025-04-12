@@ -4,6 +4,9 @@
 # Ruff caching
 **/.ruff_cache
 
+# Pytest caching
+**/.pytest_cache
+
 # Python Venv
 **/.venv
 

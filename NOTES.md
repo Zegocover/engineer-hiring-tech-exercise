@@ -13,3 +13,7 @@
 - Add stubs for BDD test
     - Feature file was a bit wordy and would mean a lot of faff for a simple comparison of a known fixture.
     - Implemented stub steps to check the BDD test infrastructure is correct.
+
+- Flesh out first BDD tests with expectations of how the user will want to interact with the application.
+    - Used caddy and docker compose to serve a basic static site then created a pytest fixture
+    - Implemented a module with hardcoded responses to pass the BDD tests knowing I can fill in the pieces as I go.
