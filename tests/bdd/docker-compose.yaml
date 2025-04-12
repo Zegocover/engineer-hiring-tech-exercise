@@ -1,0 +1,20 @@
+services:
+  caddy:
+    image: caddy:latest
+    ports:
+      - "8888:80"
+    volumes:
+      - ./html:/usr/share/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - CADDYFILE=:80
+    networks:
+      - app_net
+
+networks:
+  app_net:
+
+volumes:
+  caddy_data:
+  caddy_config:
