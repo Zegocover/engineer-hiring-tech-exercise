@@ -58,6 +58,7 @@ class Crawler:
 
             self._parser_queue.task_done()
 
+            await self._fetcher_queue.join()
             if self._site_crawled():
                 self._fetcher_queue.shutdown()
                 break
@@ -65,11 +66,10 @@ class Crawler:
         return SiteReport(pages=page_reports)
 
     async def crawl(self: "Crawler", base_url: str, fetchers: int = 5) -> SiteReport:
-        for index in range(fetchers):
-            create_task(self._fetcher_worker(), name=f"fetcher {index}")
-
+        await self._fetcher_queue.put(base_url)
         parser_task = create_task(self._parser_worker(), name="parser")
 
-        await self._fetcher_queue.put(base_url)
+        for index in range(fetchers):
+            create_task(self._fetcher_worker(), name=f"fetcher {index}")
 
         return await parser_task
