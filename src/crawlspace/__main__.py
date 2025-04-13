@@ -16,11 +16,15 @@ if __name__ == "__main__":
 
     report = asyncio.run(main(args.url))
 
-    for page in report.pages:
+    sorted_pages = sorted(report.pages, key=lambda x: len(x.url))
+
+    for page in sorted_pages:
         print(f"{page.status} {page.url}")
         if not page.links:
             print(" * No links *")
             continue
 
-        for link in page.links:
+        sorted_links = sorted(list(page.links))
+
+        for link in sorted_links:
             print(f" - {link}")
