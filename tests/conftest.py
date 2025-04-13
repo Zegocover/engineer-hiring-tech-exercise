@@ -18,7 +18,6 @@ def website():
 
     server_url = "http://localhost:8888"
 
-    sleep(1.0)
     yield server_url
 
     subprocess.run(

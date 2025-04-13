@@ -47,3 +47,8 @@
     - Opted to build a url filtering system and once again used the adversarial TDD technique with Gemini.
     - Progress was quick I was able to get a lot done just by focussing on the tests.
     - Chose to read logs to ensure that an external site has not been accessed.
+
+- Realised most of the BDD cases suggested by the AI were more unit level tests and have worked them into my unit tests where appropriate.
+- Updated Parser to look for image sources and link sources. Had to wrestle with Gemini to get it through linting but we got there in the end.
+
+

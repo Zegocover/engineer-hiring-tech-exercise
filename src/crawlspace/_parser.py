@@ -1,27 +1,54 @@
-from typing import Set
+from re import Pattern
+from typing import Callable, Dict, Iterable, List, Set, Union
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
-from bs4.element import AttributeValueList, Tag
+from bs4 import BeautifulSoup, Tag
+from bs4.element import AttributeValueList
 
 
 class Parser:
+    def _extract_links_from_tags(
+        self, soup: BeautifulSoup, tag_name: str, attribute_name: str
+    ) -> List[str]:
+        links: List[str] = []
+        attrs: Dict[
+            str,
+            Union[
+                Callable[[str], bool],
+                Iterable[Union[Callable[[str], bool], Pattern[str], bool, bytes, str]],
+                Pattern[str],
+                bool,
+                bytes,
+                str,
+            ],
+        ] = {attribute_name: True}
+        for tag in soup.find_all(tag_name, attrs):
+            if not isinstance(tag, Tag):
+                continue
+            attribute_value = tag.get(attribute_name)
+            if isinstance(attribute_value, str):
+                links.append(attribute_value)
+                continue
+            if isinstance(attribute_value, AttributeValueList) and attribute_value:
+                links.append(str(attribute_value[0]))
+        return links
+
     def parse(self, base_url: str, html_content: str) -> Set[str]:
         soup = BeautifulSoup(html_content, "html.parser")
-        links: Set[str] = set()
-        for link in soup.find_all("a", href=True):
-            if not isinstance(link, Tag):
+        found_links: Set[str] = set()
+
+        href_links = self._extract_links_from_tags(soup, "a", "href")
+        for link in href_links:
+            found_links.add(urljoin(base_url, link))
+
+        src_links = self._extract_links_from_tags(soup, "img", "src")
+        for link in src_links:
+            found_links.add(urljoin(base_url, link))
+
+        stylesheet_links = self._extract_links_from_tags(soup, "link", "href")
+        for link in stylesheet_links:
+            if not soup.find("link", href=link, rel="stylesheet"):
                 continue
+            found_links.add(urljoin(base_url, link))
 
-            href_value = link.get("href")
-            if href_value is None:
-                continue
-
-            if isinstance(href_value, str):
-                links.add(urljoin(base_url, href_value))
-                continue
-
-            if isinstance(href_value, AttributeValueList) and href_value:
-                links.add(urljoin(base_url, str(href_value[0])))
-
-        return links
+        return found_links
