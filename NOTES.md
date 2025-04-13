@@ -1,54 +1,68 @@
-- Initial study of the brief. Seems fairly straightforward but certain there will be some complexities around asyncio which the README is hinting at.
-- Setup repo with some basics. 
-    - Using Poetry for dependency management.
-    - Ruff for formating and linting.
-    - Trying out Pyre for typechecking.
-    - Pytest and Pytest-BDD for testing frameworks. Will likely need pytest-asycio at some point.
-    - Using invoke as a task runner
+## Project Notes
 
-- Initial test
-    - Add initial feature file by asking Gemini to generate a feature file based on the "The test" section of the README
-    - Generate a test that runs but is red. Will build up the initial test using the happy path.
- 
-- Add stubs for BDD test
-    - Feature file was a bit wordy and would mean a lot of faff for a simple comparison of a known fixture.
-    - Implemented stub steps to check the BDD test infrastructure is correct.
+- **Initial Brief Analysis:** The initial review of the project brief suggests a relatively straightforward implementation. However, anticipated complexities, particularly surrounding asynchronous operations with `asyncio`, are hinted at within the project's README documentation.
 
-- Flesh out first BDD tests with expectations of how the user will want to interact with the application.
-    - Used caddy and docker compose to serve a basic static site then created a pytest fixture
-    - Implemented a module with hardcoded responses to pass the BDD tests knowing I can fill in the pieces as I go.
+- **Repository Setup:** The project repository has been initialized with foundational elements:
+    - **Dependency Management:** Poetry has been configured for managing project dependencies.
+    - **Code Formatting and Linting:** Ruff has been integrated to enforce code style and identify potential issues.
+    - **Type Checking:** Pyre is being utilized for static type analysis.
+    - **Testing Frameworks:** Pytest and Pytest-BDD have been selected for unit and behavior-driven development, respectively. `pytest-asyncio` is expected to be incorporated for asynchronous testing.
+    - **Task Runner:** Invoke has been implemented as the project's task runner.
 
-- Implement Crawler class that will hide the complexity of the underlying pieces. 
-    - Implemented a unit test for the class, hard code response and replace hard coded response from the application with return from crawler class.
-    - Added `pytest-asyncio`. Have started with async methods as I can feel them coming in soon.
-    - Updated tasks collection with `unit` ad `test`
+- **Initial Test Implementation:**
+    - An initial feature file was generated using Gemini based on the "The test" section of the README.
+    - A preliminary test was created, currently failing, to establish the testing infrastructure. Subsequent development will focus on building the test based on the expected happy path.
 
-- Start building the implementation details of the the Crawler class. I have opted for dependency injection so that I can start with a basic mocked version of the object and build it up. Consequently, I have broken the BDD test but I can rectify that building a hardcoded parser class on my next iteration.
-    - Implemented a mock parser and a mock fetcher that return hardcoded responses. These were used to build the implementation of the main crawler class so I could focus on the tricky async code using the happy path.
-    - The crawler now behaves as expected.
+- **BDD Test Stubs:**
+    - The initial feature file's verbosity was deemed excessive for a simple fixture comparison, leading to potential complexity.
+    - Stubbed step definitions were implemented to validate the integrity of the BDD testing framework.
 
-- Built the fetcher class
-    - Wrote tests for cases of 404, 500 and general exceptions when trying to fetch.
-    - Upgraded website fixture to redirect to a 404 page or 500 at appropriate times.
-    - Moved website fixture to tests folder so that unit tests and bdd tests could make use of it.
+- **Fleshing Out First BDD Tests:**
+    - BDD tests are being developed to reflect anticipated user interactions with the application.
+    - A local static site is being served using Caddy and Docker Compose, with a corresponding Pytest fixture created for testing purposes.
+    - A module with hardcoded responses has been implemented to facilitate the initial passing of BDD tests, allowing for iterative implementation of core logic.
 
-- Bug: Parser was able to cause fetcher tasks to terminate early. this would result in random results not appearing in the report.
-    - Fixed by having Parser wait for fetcher queue to be `joined()` ie. empty, before checking if the workload was complete.
+- **Crawler Class Implementation:**
+    - A `Crawler` class is being developed to abstract the intricacies of underlying components.
+    - A unit test for the `Crawler` class has been implemented, utilizing a hardcoded response. The application's hardcoded response has been replaced with the output from the `Crawler` class.
+    - `pytest-asyncio` has been added to the project. Asynchronous methods are being adopted in anticipation of future requirements.
+    - The `tasks.py` collection has been updated to include `unit` and `test` tasks.
 
-- Bug: Async results are not guaranteed to show up in the right order. 
-    - To remedy this, I sorted the report results before sending to the application. We only care that the result exists, not the order we got them.
+- **Crawler Class Implementation Details:**
+    - The implementation of the `Crawler` class is proceeding with a focus on dependency injection to enable iterative development, starting with a mocked version of dependent objects. This has temporarily resulted in BDD test failures, which will be addressed by developing a hardcoded parser class in the next iteration.
+    - Mock parser and fetcher classes, returning hardcoded responses, were implemented to facilitate the development of the core `Crawler` logic, allowing focus on asynchronous behavior within the happy path.
+    - The `Crawler` class now exhibits the expected functionality.
 
-- Build the parser class.
-    - I wrote the basic test for links on a page and instructed Gemini to build a class that would pass the test.
-    - The first try was successful but failed static checks. After some back and forth, Gemini produced a working but ugly solution.
-    - I refactored the working solution into the class. Will add use cases over time.
+- **Fetcher Class Development:**
+    - Tests have been written for the `Fetcher` class to cover scenarios involving 404 and 500 status codes, as well as general exceptions during fetch operations.
+    - The website fixture has been enhanced to simulate redirects to 404 and 500 error pages as required by the tests.
+    - The website fixture has been relocated to the `tests` folder to enable its utilization by both unit and BDD tests.
 
-- Tackled the First other BDD testcase around external sites. 
-    - Opted to build a url filtering system and once again used the adversarial TDD technique with Gemini.
-    - Progress was quick I was able to get a lot done just by focussing on the tests.
-    - Chose to read logs to ensure that an external site has not been accessed.
+- **Bug Fix: Premature Task Termination:**
+    - An identified bug involved the Parser potentially causing early termination of fetcher tasks, leading to incomplete reporting of results.
+    - This issue was resolved by ensuring the Parser waits for the fetcher queue to be `joined()` (empty) before assessing the completion of the workload.
 
-- Realised most of the BDD cases suggested by the AI were more unit level tests and have worked them into my unit tests where appropriate.
-- Updated Parser to look for image sources and link sources. Had to wrestle with Gemini to get it through linting but we got there in the end.
+- **Bug Fix: Asynchronous Result Ordering:**
+    - Asynchronous operations did not guarantee the order of results in the final report.
+    - To address this, the report results are now sorted before being passed to the application. The primary requirement is the presence of results, not their retrieval order.
 
-- Updated Fetcher to check content type by checking the HEAD then continuing to download if there is a text based content header.
+- **Parser Class Development:**
+    - A basic unit test for link parsing on a web page was created, and Gemini was used to generate an initial `Parser` class implementation to pass this test.
+    - The initial implementation, while functional, failed static code analysis. After iterative refinement with Gemini, a working but suboptimal solution was produced.
+    - The working solution has been refactored into the `Parser` class. Additional use cases will be incorporated over time.
+
+- **External Site Test Case:**
+    - The first BDD test case involving external sites is being addressed through the development of a URL filtering system, again employing adversarial TDD with Gemini.
+    - Progress has been efficient, with significant development enabled by the test-driven approach.
+    - Log analysis has been implemented to verify that external sites are not accessed during testing.
+
+- **BDD Test Refinement:**
+    - A significant portion of the BDD test cases initially suggested by Gemini were deemed more appropriate as unit-level tests and have been integrated accordingly.
+
+- **Parser Enhancement:**
+    - The `Parser` class has been updated to identify image sources (`src` attributes of `<img>` tags) and link sources (`href` attributes of `<a>` and `<link>` tags). Achieving linting compliance required iterative refinement with Gemini.
+
+- **Fetcher Enhancement:**
+    - The `Fetcher` class has been enhanced to perform content type checking. It now sends a HEAD request to inspect the `Content-Type` header and proceeds with the full download only if the content type indicates a text-based resource.
+
+- **Note on Note Tidy-Up:** These notes have been tidied and formatted for clarity with the assistance of the Gemini LLM, maintaining the original voice and intent.
