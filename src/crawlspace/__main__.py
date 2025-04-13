@@ -1,11 +1,22 @@
 import argparse
 import asyncio
+import logging
 
 from ._crawler import Crawler
 from .schemas import SiteReport
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("crawlspace.log", "w"),
+    ],
+)
+logger = logging.getLogger(__name__)
+
 
 async def main(base_url: str) -> SiteReport:
+    logger.info(f"Starting crawl at {base_url}")
     return await Crawler().crawl(base_url)
 
 

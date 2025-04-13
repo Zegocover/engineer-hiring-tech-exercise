@@ -1,5 +1,6 @@
 from asyncio import Queue, QueueShutDown, create_task
 
+from ._fetch_url_filter import FetchUrlFilter
 from ._fetcher import Fetcher
 from ._parser import Parser
 from .schemas import FetchResult, PageReport, SiteReport
@@ -33,20 +34,17 @@ class Crawler:
     def _site_crawled(self: "Crawler") -> bool:
         return self._fetcher_queue.empty() and self._parser_queue.empty()
 
-    async def _parser_worker(self: "Crawler"):
+    async def _parser_worker(self: "Crawler", fetch_url_filter: FetchUrlFilter):
         page_reports: list[PageReport] = list()
-        visited_urls: set = set()
 
         while True:
             fetch_result: FetchResult = await self._parser_queue.get()
-            visited_urls.add(fetch_result.url)
 
             parsed_urls: set = self._parser.parse(fetch_result.url, fetch_result.text)
 
-            unvisited_urls = parsed_urls.difference(visited_urls)
-
-            for url in unvisited_urls:
-                await self._fetcher_queue.put(url)
+            for url in parsed_urls:
+                if fetch_url_filter.should_fetch(url):
+                    await self._fetcher_queue.put(url)
 
             page_reports.append(
                 PageReport(
@@ -66,8 +64,11 @@ class Crawler:
         return SiteReport(pages=page_reports)
 
     async def crawl(self: "Crawler", base_url: str, fetchers: int = 5) -> SiteReport:
-        await self._fetcher_queue.put(base_url)
-        parser_task = create_task(self._parser_worker(), name="parser")
+        fetch_url_filter = FetchUrlFilter(base_url)
+        if fetch_url_filter.should_fetch(base_url):
+            await self._fetcher_queue.put(base_url)
+
+        parser_task = create_task(self._parser_worker(fetch_url_filter), name="parser")
 
         for index in range(fetchers):
             create_task(self._fetcher_worker(), name=f"fetcher {index}")

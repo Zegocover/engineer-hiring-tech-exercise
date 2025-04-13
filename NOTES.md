@@ -38,7 +38,12 @@
 - Bug: Async results are not guaranteed to show up in the right order. 
     - To remedy this, I sorted the report results before sending to the application. We only care that the result exists, not the order we got them.
 
-- Build the fetcher class.
+- Build the parser class.
     - I wrote the basic test for links on a page and instructed Gemini to build a class that would pass the test.
     - The first try was successful but failed static checks. After some back and forth, Gemini produced a working but ugly solution.
-    - I refactored the work into the class. Will add use cases over time.
+    - I refactored the working solution into the class. Will add use cases over time.
+
+- Tackled the First other BDD testcase around external sites. 
+    - Opted to build a url filtering system and once again used the adversarial TDD technique with Gemini.
+    - Progress was quick I was able to get a lot done just by focussing on the tests.
+    - Chose to read logs to ensure that an external site has not been accessed.
