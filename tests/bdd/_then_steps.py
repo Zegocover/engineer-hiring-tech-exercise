@@ -9,8 +9,8 @@ def assert_printed_url_report(website, crawler_report):
         "\n".join(
             [
                 f"200 {website}",
-                f" - {website}/empty-page",
-                f"200 {website}/empty-page",
+                f" - {website}/empty_page.html",
+                f"200 {website}/empty_page.html",
                 f" * No links *",
             ]
         )

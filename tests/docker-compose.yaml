@@ -4,11 +4,12 @@ services:
     ports:
       - "8888:80"
     volumes:
-      - ./html:/usr/share/caddy:ro
+      - ./html_fixtures:/usr/share/caddy:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro  # Mount your Caddyfile
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      - CADDYFILE=:80
+      - CADDY_CONFIG=/etc/caddy/Caddyfile
     networks:
       - app_net
 
