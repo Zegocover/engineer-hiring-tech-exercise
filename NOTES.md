@@ -25,5 +25,10 @@
 
 - Start building the implementation details of the the Crawler class. I have opted for dependency injection so that I can start with a basic mocked version of the object and build it up. Consequently, I have broken the BDD test but I can rectify that building a hardcoded parser class on my next iteration.
     - Implemented a mock parser and a mock fetcher that return hardcoded responses. These were used to build the implementation of the main crawler class so I could focus on the tricky async code using the happy path.
-    - The crawler now behaves as expected and should
+    - The crawler now behaves as expected.
+
+- Built the fetcher class
+    - Wrote tests for cases of 404, 500 and general exceptions when trying to fetch.
+    - Upgraded website fixture to redirect to a 404 page or 500 at appropriate times.
+    - Moved website fixture to tests folder so that unit tests and bdd tests could make use of it.
 
