@@ -23,4 +23,7 @@
     - Added `pytest-asyncio`. Have started with async methods as I can feel them coming in soon.
     - Updated tasks collection with `unit` ad `test`
 
-- Start building the implementation details of the the Crawler class. I have opted for dependency injection so that I can start with a basic mocked version of the object and ubild it up. Consequently, I have vroken the BDD test but I can rectify that building a hardcoded parser class on my next iteration.
+- Start building the implementation details of the the Crawler class. I have opted for dependency injection so that I can start with a basic mocked version of the object and build it up. Consequently, I have broken the BDD test but I can rectify that building a hardcoded parser class on my next iteration.
+    - Implemented a mock parser and a mock fetcher that return hardcoded responses. These were used to build the implementation of the main crawler class so I could focus on the tricky async code using the happy path.
+    - The crawler now behaves as expected and should
+

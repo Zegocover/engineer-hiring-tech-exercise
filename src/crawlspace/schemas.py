@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 class PageReport:
     url: str
     status: int
-    links: list[str] = field(default_factory=list)
+    links: set[str] = field(default_factory=set)
 
 
 @dataclass

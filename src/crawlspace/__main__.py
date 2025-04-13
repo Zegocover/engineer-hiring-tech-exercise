@@ -2,7 +2,7 @@ import argparse
 import asyncio
 
 from ._crawler import Crawler
-from .schemas import PageReport, SiteReport
+from .schemas import SiteReport
 
 
 async def main(base_url: str) -> SiteReport:
