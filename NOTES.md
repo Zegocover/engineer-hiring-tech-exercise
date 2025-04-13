@@ -51,4 +51,4 @@
 - Realised most of the BDD cases suggested by the AI were more unit level tests and have worked them into my unit tests where appropriate.
 - Updated Parser to look for image sources and link sources. Had to wrestle with Gemini to get it through linting but we got there in the end.
 
-
+- Updated Fetcher to check content type by checking the HEAD then continuing to download if there is a text based content header.
