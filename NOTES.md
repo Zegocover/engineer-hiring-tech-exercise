@@ -32,3 +32,13 @@
     - Upgraded website fixture to redirect to a 404 page or 500 at appropriate times.
     - Moved website fixture to tests folder so that unit tests and bdd tests could make use of it.
 
+- Bug: Parser was able to cause fetcher tasks to terminate early. this would result in random results not appearing in the report.
+    - Fixed by having Parser wait for fetcher queue to be `joined()` ie. empty, before checking if the workload was complete.
+
+- Bug: Async results are not guaranteed to show up in the right order. 
+    - To remedy this, I sorted the report results before sending to the application. We only care that the result exists, not the order we got them.
+
+- Build the fetcher class.
+    - I wrote the basic test for links on a page and instructed Gemini to build a class that would pass the test.
+    - The first try was successful but failed static checks. After some back and forth, Gemini produced a working but ugly solution.
+    - I refactored the work into the class. Will add use cases over time.
