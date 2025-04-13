@@ -12,3 +12,6 @@
 
 # Python caching
 **/__pycache__
+
+# Application logs
+**/*.log
