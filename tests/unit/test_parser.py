@@ -1,10 +1,10 @@
 from crawlspace._parser import Parser
 
 
-def test_parser():
+def test_parser(html):
     parser = Parser()
     base_url: str = "http://localhost:8888"
-    page: str = ""
+    page: str = html.get("parse_test.html")
 
     result = parser.parse(base_url, page)
 
