@@ -44,3 +44,12 @@ async def test_fetcher_returns_minus_1_and_empty_page_on_connection_error():
     result: FetchResult = await fetcher.fetch(url)
 
     assert result == FetchResult(url=url, status=-1, text="")
+
+
+async def test_fetcher_handles_no_text_correctly():
+    fetcher = Fetcher()
+
+    url: str = f"http://localhost:8888/kungfu.gif"
+    result: FetchResult = await fetcher.fetch(url)
+
+    assert result == FetchResult(url=url, status=200, text="")
