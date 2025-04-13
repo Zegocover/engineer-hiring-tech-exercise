@@ -8,4 +8,8 @@ def test_parser(html):
 
     result = parser.parse(base_url, page)
 
-    assert result == {"http://localhost:8888/empty_page.html"}
+    assert result == {
+        "http://localhost:8888/empty_page.html",
+        "http://localhost:8888/kungfu.gif",
+        "http://localhost:8888/style.css",
+    }
