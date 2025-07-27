@@ -1,89 +1,121 @@
-# front-end-developer-test
+# Server-Driven Dynamic Form in Next.js + TypeScript
 
-# Zego
+## 💻 How to run the project
 
-## About Us
+```bash
+cd front-end/dynamic-form
+npm install
+npm run dev
+```
 
-At Zego, we understand that traditional motor insurance holds good drivers back.
-It's too complicated, too expensive, and it doesn't reflect how well you actually drive.
-Since 2016, we have been on a mission to change that by offering the lowest priced insurance for good drivers.
+## ⚙️ Core dependencies
 
-From van drivers and gig economy workers to everyday car drivers, our customers are the driving force behind everything we do. We've sold tens of millions of policies and raised over $200 million in funding. And we’re only just getting started.
+- React Hook Form – Lightweight form state management
 
-## Our Values
+- Chakra UI – Component library used for styling, layout, and a11y support
 
-Zego is thoroughly committed to our values, which are the essence of our culture. Our values defined everything we do and how we do it.
-They are the foundation of our company and the guiding principles for our employees. Our values are:
+- React Query – Handles API data fetching and caching
 
-<table>
-    <tr><td><img src="../doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="../doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="../doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="../doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
-</table>
+- Jest & React Testing Library – Testing framework and utilities
 
-## The Engineering Team
+- Next.js – App router used for routing and SSR/SSG
 
-Zego puts technology first in its mission to define the future of the insurance industry.
-By focusing on our customers' needs we're building the flexible and sustainable insurance products
-and services that they deserve. And we do that by empowering a diverse, resourceful, and creative
-team of engineers that thrive on challenge and innovation.
+## Testing strategy
 
-### How We Work
+I’ve written some simplified page-level integration tests that validate the form renders correctly from a config and accepts input.
 
-- **Collaboration & Knowledge Sharing** - Engineers at Zego work closely with cross-functional teams to gather requirements,
-  deliver well-structured solutions, and contribute to code reviews to ensure high-quality output.
-- Problem Solving & Innovation - We encourage analytical thinking and a proactive approach to tackling complex
-  problems. Engineers are expected to contribute to discussions around optimization, scalability, and performance.
-- **Continuous Learning & Growth** – At Zego, we provide engineers with abundant opportunities to learn, experiment and
-  advance. We positively encourage the use of AI in our solutions as well as harnessing AI-powered tools to automate
-  workflows, boost productivity and accelerate innovation. You’ll have our full support to refine your skills, stay
-  ahead of best practices and explore the latest technologies that drive our products and services forward.
-- **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
-  scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
+If this were a production app, I would also:
 
-## Who should be taking this test?
+- Write component-level tests for all field types (e.g., Input, Dropdown)
 
-This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
-Ideally you have hands-on experience developing Next.js and Typescript solutions in a commercial setting. You have good problem-solving abilities, a passion for writing clean efficient, maintainable, scaleable code.
+- Use Mock Service Worker (MSW) to mock API endpoints at runtime
 
-## The test: Server-Driven UI in Next.js (React) + TypeScript 🧪
+- Add unhappy path coverage: missing config, validation errors, network failure
 
-You are tasked with building a basic **server-driven UI system** using **Next.js** and **TypeScript**. The client should render a simple form-driven UI based entirely on configuration data provided by a backend endpoint. The structure, layout, and component behaviour should all be dictated by the configuration.
+- Run E2E tests with Playwright or Cypress to simulate user interaction and validate real backend responses (including redirects and success screens)
 
-### You must:
+## Server-side rendering
 
-- Build a dynamic form renderer that consumes a config and displays a working UI.
-- Support five core UI components:
-  - Text (static label/paragraph)
-  - Input (text field)
-  - Dropdown (select menu)
-  - Button (form submission)
-  - Form (wrapper that handles submission and renders child components)
-- Fetch the config from an API route (e.g. `/api/config`) and use it to drive rendering.
-- On form submission, post form data to an API route (e.g. `/api/submit`) and log the field contents.
+I fetch the config in getServerSideProps to:
 
-As this code might be deployed into production, please consider the following:
+- Mimic production-style SSR usage
 
-- **Error handling**: Handle potential errors in fetching the config and submitting the form.
-- **Accessibility**: Ensure the UI is accessible (e.g. using ARIA roles, keyboard navigation).
-- **Styling**: Use a CSS framework to style the components. You can use any styling approach you prefer (CSS modules, styled-components, etc.).
-- **Testing**: Write unit tests for your components and integration tests for the form submission process.
-- **Documentation**: Provide clear documentation on how to run the project, including setup instructions and any dependencies.
-- **End to End Testing**: Think about your end to end test strategy. How would you test the flow of the application? What tools would you use? How would you ensure that the UI is rendered correctly based on the config? How would you ensure that your tests aren't brittle and won't fail as soon as the UI config is updated?
+- Allow dynamic config per request
 
-## The objective
+- Help with caching, SEO, and quicker TTFB
 
-This exercise gives you the opportunity to showcase your software design skills and coding craftsmanship. Start by presenting a high-level design that covers the full scope of your solution, then drill down into implementation details. We’ll evaluate how you organize your code and validate it through testing. Describe your problem-solving process - how you researched the domain, which tools you used to write and verify your code, and your overall development workflow. Be sure to include specifics about your IDE, any interactive AI tools (such as Copilot), and any other AI-powered utilities that played a role in your solution.
-You might also consider how you would extend your code to handle more complex scenarios, such as adding more sophisticated components or how you would validate form data on the server before transitioning to another page. Also, feel free to set the repo up as you would a production project.
+While calling internal APIs from GSSP is generally discouraged (as it adds unnecessary overhead), I’ve done so here intentionally to simulate an external config API. In a production system, I’d use a shared data layer or service abstraction to avoid redundant requests.
 
-Extend this README to include a detailed discussion about your design decisions, the options you considered and
-the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
+React Query is initialized with initialData from GSSP, but for completeness, hydration could be improved with dehydrate/hydrate.
 
-# Instructions
+## Validation (Frontend + Backend)
 
-1. Create a repo.
-2. Tackle the test.
-3. Push the code back.
-4. Add us (@2014klee, @danyal-zego, @bogdangoie and @cypherlou) as collaborators and tag us to review.
-5. Notify your TA so they can chase the reviewers.
+Although not fully implemented here due to time constraints, I would use a shared yup schema for:
+
+Frontend validation via React Hook Form + zodResolver
+
+Backend schema checking to ensure incoming payloads are typed and secure
+
+This approach guarantees consistent validation across client/server and reduces drift over time.
+
+## App router vs Page router
+
+I used the Page Router for speed of development. In a larger project, I’d carefully consider:
+
+- Streaming vs SSR trade-offs
+- File structure preferences
+- Middleware requirements
+
+## State persistence (incomplete form recovery)
+
+To improve UX, I would allow the user to return to a partially-completed form by:
+
+- Saving draft form data to localStorage
+
+- Optionally POSTing partial submissions to a backend endpoint
+
+- Reading draft data back into defaultValues when the form is mounted
+
+## Config versioning
+
+To avoid breaking in-progress forms when the config changes, I’d include a version key on the form config. Submitted data would include this version number, allowing the backend to:
+
+- Reject invalid combinations
+
+- Perform migrations
+
+- Maintain compatibility
+
+## Accessibility (A11y)
+
+Accessibility was a focus throughout:
+
+I ensured fields use proper labels, roles, and keyboard support (in part due to Chakra + Ark UI primitives)
+
+Tests assert field presence via getByLabelText, which guarantees semantic connections between <label> and controls
+
+The Select dropdown uses accessible primitives from Chakra’s underlying @zag-js system
+
+Further improvements (e.g., automated a11y tests, screen reader audit) would be completed before production.
+
+## Use of AI tools
+
+ChatGPT – Used for research, refactoring suggestions, and this write-up
+
+VS Code – With ESLint, Prettier, and Copilot inline suggestions
+
+All AI-assisted code was reviewed, corrected, and manually integrated into the final solution.
+
+## Areas for future extension
+
+More component types: date picker, multi-select, file upload, conditional groups
+
+Multi-step forms: wizard-style config with progress indicators and per-step validation
+
+Form analytics: tracking dropout rate or average completion time
+
+Admin config UI: A CMS-like editor to manage form configs visually
+
+Preview mode: Allow previewing form from config before publishing
+
+Conditional fields as part of validation: For example if a field depending on a certain value of another field
