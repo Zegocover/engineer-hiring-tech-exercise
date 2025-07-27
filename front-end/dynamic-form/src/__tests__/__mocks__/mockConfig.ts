@@ -1,0 +1,86 @@
+import { FormConfig } from "@/features/dynamicForm";
+
+export const config = [
+  {
+    id: "introduction",
+    name: "Introduction",
+    type: "text",
+    value: "Hello, I am a dynamic form",
+    disabled: false,
+    validation: null,
+  },
+  {
+    id: "firstName",
+    name: "firstName",
+    type: "input",
+    label: "First name",
+    value: "Karim",
+    placeholder: "",
+    validation: {
+      required: true,
+      pattern: null,
+      dependsOn: null,
+    },
+    disabled: false,
+  },
+  {
+    id: "lastName",
+    name: "lastName",
+    label: "Last name",
+    type: "input",
+    value: "Hmaissi",
+    placeholder: "",
+    validation: {
+      required: true,
+      pattern: null,
+      dependsOn: null,
+    },
+    disabled: false,
+  },
+  {
+    id: "email",
+    name: "email",
+    type: "input",
+    label: "Email",
+    value: "karim@email.com",
+    placeholder: "",
+    validation: {
+      required: true,
+      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      dependsOn: {
+        field: "otherField",
+        condition: "notEmpty",
+      },
+    },
+    disabled: false,
+  },
+  {
+    id: "insuranceType",
+    name: "insuranceType",
+    type: "dropdown",
+    label: "Choose the type of insurance you need",
+    placeholder: "Select insurance",
+    value: [""],
+    options: [
+      { label: "Car insurance", value: "car" },
+      { label: "Car delivery insurance", value: "carDelivery" },
+      { label: "Private hire insurance", value: "privateHire" },
+      { label: "Scooter insurance", value: "scooter" },
+      { label: "Van insurance", value: "van" },
+    ],
+    disabled: false,
+    validation: {
+      required: true,
+      pattern: null,
+      dependsOn: null,
+    },
+  },
+  {
+    id: "submitPersonalDetails",
+    name: "submitPersonalDetails",
+    type: "button",
+    value: "Next",
+    disabled: false,
+    validation: null,
+  },
+] as FormConfig;
