@@ -119,3 +119,5 @@ Admin config UI: A CMS-like editor to manage form configs visually
 Preview mode: Allow previewing form from config before publishing
 
 Conditional fields as part of validation: For example if a field depending on a certain value of another field
+
+Validation of post body when received by backend. This could use the validation rules set out in the config
