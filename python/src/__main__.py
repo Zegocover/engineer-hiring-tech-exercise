@@ -2,7 +2,6 @@ import argparse
 import logging
 import multiprocessing
 import signal
-import sys
 from urlcrawler import UrlCrawler, HttpDownloader, HtmlParser
 
 if __name__ == "__main__":

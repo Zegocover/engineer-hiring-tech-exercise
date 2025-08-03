@@ -60,7 +60,8 @@ class UrlCrawler:
         _LOG.info(f"Starting {self.thread_count} worker threads.")
         self.queue.append(self.main_url)
         for i in range(self.thread_count):
-            worker = UrlCrawlerWorker(self, i)
+            queue_wait_timeout = 10 if self.thread_count > 1 else 0
+            worker = UrlCrawlerWorker(self, i, queue_wait_timeout)
             self.thread_pool.append(worker)
             worker.start()
         # Keep main thread awake to listen for exit signals
@@ -69,12 +70,11 @@ class UrlCrawler:
                 t.is_alive() for t in self.thread_pool
             ):
                 # Waiting for stop signal
-                time.sleep(0.5)
+                time.sleep(0.1)
         finally:
             for t in self.thread_pool:
                 t.join()
             self.thread_pool = []
-            # Print Errors
 
     def stop(self):
         _LOG.info("Stopping")
@@ -82,10 +82,11 @@ class UrlCrawler:
 
 
 class UrlCrawlerWorker(threading.Thread):
-    def __init__(self, crawler: UrlCrawler, worker_id: int):
+    def __init__(self, crawler: UrlCrawler, worker_id: int, timeout: int = 10):
         super().__init__()
         self.crawler = crawler
         self.worker_id = worker_id
+        self.get_url_timeout = timeout
 
     def run(self):
         _LOG.info(f"Thread({self.worker_id}): Starting")
@@ -113,27 +114,28 @@ class UrlCrawlerWorker(threading.Thread):
                 continue
             # NOTE: Per requirements, print all the URLs on that page
             # regardless of the visited or enqueued status
-            print(*all_urls, sep="\n")
+            for new_url in all_urls:
+                print(f"- {new_url}")
             same_domain_urls = [url for url in all_urls if self.__is_same_domain(url)]
             for new_url in same_domain_urls:
                 self.crawler.add_url_if_needed(new_url)
         _LOG.info(f"Thread({self.worker_id}): Stopped")
 
-    def __get_url_with_timeout(self, timeout=10) -> Optional[str]:
+    def __get_url_with_timeout(self) -> Optional[str]:
         """Retrieve an url from the queue.
         If the queue is empty it waits for timeout until it returns None.
         NOTE: The timeout is needed to wait for other producer threads to generate information.
-        Args:
-            timeout (int, optional): Timeout in seconds. Defaults to 10.
         Returns:
             Optional[str]: The next URL to process
         """
         _LOG.info(
             f"Thread({self.worker_id}): Visited: {len(self.crawler.visited)}, Queued: {len(self.crawler.queue)} Errors: {len(self.crawler.errors)}"
         )
-        start_time = time.time()
-        end_time = start_time + timeout
-        while not self.crawler.stop_event.is_set() and time.time() < end_time:
+        if self.get_url_timeout == 0:
+            return self.crawler.get_next_url()
+        # Wait for a URL to be available in the queue until timeout
+        end_time = time.time() + self.get_url_timeout
+        while not self.crawler.stop_event.is_set() and time.time() <= end_time:
             url = self.crawler.get_next_url()
             if url:
                 return url
