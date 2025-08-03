@@ -24,6 +24,7 @@ class HttpDownloader:
         os.makedirs("./cache", exist_ok=True)
 
     def get(self, url: str) -> str:
+        # FIXME: Hardcoded cache directory, not suitable for production
         filename = f"./cache/{hashlib.md5(url.encode("utf-8")).hexdigest()}.txt"
         if self.use_cache and os.path.exists(filename):
             _LOG.debug(f"Response found in cache: {url} {filename}")

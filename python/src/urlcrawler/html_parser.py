@@ -29,13 +29,19 @@ class HtmlParser:
             ):
                 _LOG.debug(f"Skipping: {href} invalid href.")
                 continue
-            # Converts relative URLs to absolute URLs
-            # If urls do not share the same domain, it returns the url (2nd parameter)
-            # TODO Fix https://www.zego.com/zego.com/onboarding/scooter-motorbike-delivery/requirements/ bug
-            absolute_url = urljoin(main_url, href)
+            absolute_url = self.__get_absolute_url(main_url, href)
             parsed_url = urlparse(absolute_url)
             if parsed_url.scheme not in ["http", "https"]:
                 _LOG.debug(f"Skipping: {absolute_url} invalid scheme")
                 continue
             links.append(absolute_url)
         return links
+
+    def __get_absolute_url(self, main_url: str, url: str):
+        """Converts relative URLs to absolute URLs"""
+        main_domain = urlparse(main_url).netloc.lower()
+        if url.startswith(main_domain):
+            # Fixes condition where the URL does not start with a scheme
+            # E.G. href="zego.com/onboarding/scooter-motorbike-delivery/requirements"
+            return urljoin(main_url, url.replace(main_domain, main_url, 1))
+        return urljoin(main_url, url)
