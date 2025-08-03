@@ -31,6 +31,7 @@ class HtmlParser:
                 continue
             # Converts relative URLs to absolute URLs
             # If urls do not share the same domain, it returns the url (2nd parameter)
+            # TODO Fix https://www.zego.com/zego.com/onboarding/scooter-motorbike-delivery/requirements/ bug
             absolute_url = urljoin(main_url, href)
             parsed_url = urlparse(absolute_url)
             if parsed_url.scheme not in ["http", "https"]:

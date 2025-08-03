@@ -1,9 +1,9 @@
 import argparse
 import logging
 import multiprocessing
-from urlcrawler import URLCrawler, HttpDownloader, HtmlParser
-
-_LOG = logging.getLogger(__name__)
+import signal
+import sys
+from urlcrawler import UrlCrawler, HttpDownloader, HtmlParser
 
 if __name__ == "__main__":
     cpu_count = multiprocessing.cpu_count()
@@ -17,7 +17,7 @@ if __name__ == "__main__":
         help="Number of threads to use (defaults to cpu_count).",
     )
     parser.add_argument(
-        "--use-cache",
+        "--cache",
         action="store_true",
         help="Enable using of local cache",
     )
@@ -28,7 +28,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     logging.basicConfig(level=args.log.upper())
-    downloader = HttpDownloader(args.use_cache)
+    downloader = HttpDownloader(args.cache)
     parser = HtmlParser()
-    crawler = URLCrawler(args.url, args.threads, downloader, parser)
+    crawler = UrlCrawler(args.url, args.threads, downloader, parser)
+    # Enables Ctrl+C exit signal from CMD
+    signal.signal(signal.SIGINT, lambda _sig, _frame: crawler.stop())
     crawler.start()

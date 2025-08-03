@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -9,7 +10,7 @@ from .http_downloader import HttpDownloader
 _LOG = logging.getLogger(__name__)
 
 
-class URLCrawler:
+class UrlCrawler:
     def __init__(
         self,
         url: str,
@@ -26,51 +27,127 @@ class URLCrawler:
         # Concurrency
         self.thread_count = thread_count
         self.lock = threading.Lock()
+        self.error_lock = threading.Lock()
+        self.thread_pool: list[UrlCrawlerWorker] = []
+        self.stop_event = threading.Event()
         # Injection
         # NOTE: Factories are a more robust pattern, but an overkill in this test
         self.downloader = downloader
         self.parser = parser
 
+    def get_next_url(self) -> Optional[str]:
+        with self.lock:
+            if self.queue:
+                url = self.queue.pop(0)
+                self.visited.add(url)
+                return url
+            else:
+                return None
+
+    def add_url_if_needed(self, url: str):
+        with self.lock:
+            if url not in self.visited and url not in self.queue:
+                _LOG.debug(f"Adding to queue: {url}")
+                self.queue.append(url)
+            else:
+                _LOG.debug(f"Already visited or in queue: {url}")
+
+    def add_error(self, url: str, ex: Exception):
+        with self.error_lock:
+            self.errors.append((url, ex))
+
     def start(self):
+        _LOG.info(f"Starting {self.thread_count} worker threads.")
         self.queue.append(self.main_url)
-        while self.queue:
-            current_url = self.queue.pop(0)
-            _LOG.info(
-                f"Visited: {len(self.visited)}, Queued: {len(self.queue)} Errors: {len(self.errors)}, URL: {current_url}"
-            )
+        for i in range(self.thread_count):
+            worker = UrlCrawlerWorker(self, i)
+            self.thread_pool.append(worker)
+            worker.start()
+        # Keep main thread awake to listen for exit signals
+        try:
+            while not self.stop_event.is_set() and any(
+                t.is_alive() for t in self.thread_pool
+            ):
+                # Waiting for stop signal
+                time.sleep(0.5)
+        finally:
+            for t in self.thread_pool:
+                t.join()
+            self.thread_pool = []
+            # Print Errors
+
+    def stop(self):
+        _LOG.info("Stopping")
+        self.stop_event.set()
+
+
+class UrlCrawlerWorker(threading.Thread):
+    def __init__(self, crawler: UrlCrawler, worker_id: int):
+        super().__init__()
+        self.crawler = crawler
+        self.worker_id = worker_id
+
+    def run(self):
+        _LOG.info(f"Thread({self.worker_id}): Starting")
+        while not self.crawler.stop_event.is_set():
+            url = self.__get_url_with_timeout()
+            if not url:
+                _LOG.info(f"Thread({self.worker_id}): No more work")
+                break
             # NOTE: Per requirements, print the current URL
-            print(current_url)
-            self.visited.add(current_url)
-            response = self.__get_response(current_url)
+            print(url)
+            response = self.__get_response(url)
             if not response:
-                _LOG.warning(f"No response, skipping {current_url}")
+                _LOG.warning(f"Thread({self.worker_id}): No response, skipping {url}")
                 continue
             all_urls = []
             try:
-                all_urls = self.parser.find_urls(self.main_url, response)
-            except Exception as e:
-                _LOG.error(f"Error parsing response for {current_url}: {e}")
-                self.errors.append((current_url, e))
+                all_urls = self.crawler.parser.find_urls(
+                    self.crawler.main_url, response
+                )
+            except Exception as ex:
+                _LOG.error(
+                    f"Thread({self.worker_id}): Error parsing response for {url}: {ex}"
+                )
+                self.crawler.add_error(url, ex)
                 continue
             # NOTE: Per requirements, print all the URLs on that page
-            # Regardless of the visited or enqueued status
+            # regardless of the visited or enqueued status
             print(*all_urls, sep="\n")
-            new_valid_urls_to_crawl = [
-                url
-                for url in all_urls
-                if self.__is_same_domain(url)
-                and url not in self.visited
-                and url not in self.queue
-            ]
-            self.queue.extend(new_valid_urls_to_crawl)
+            same_domain_urls = [url for url in all_urls if self.__is_same_domain(url)]
+            for new_url in same_domain_urls:
+                self.crawler.add_url_if_needed(new_url)
+        _LOG.info(f"Thread({self.worker_id}): Stopped")
+
+    def __get_url_with_timeout(self, timeout=10) -> Optional[str]:
+        """Retrieve an url from the queue.
+        If the queue is empty it waits for timeout until it returns None.
+        NOTE: The timeout is needed to wait for other producer threads to generate information.
+        Args:
+            timeout (int, optional): Timeout in seconds. Defaults to 10.
+        Returns:
+            Optional[str]: The next URL to process
+        """
+        _LOG.info(
+            f"Thread({self.worker_id}): Visited: {len(self.crawler.visited)}, Queued: {len(self.crawler.queue)} Errors: {len(self.crawler.errors)}"
+        )
+        start_time = time.time()
+        end_time = start_time + timeout
+        while not self.crawler.stop_event.is_set() and time.time() < end_time:
+            url = self.crawler.get_next_url()
+            if url:
+                return url
+        return None
 
     def __get_response(self, url: str) -> Optional[str]:
         try:
-            return self.downloader.get(url)
-        except Exception as e:
-            _LOG.error(f"Error fetching {url}: {e}")
-            self.errors.append((url, e))
+            return self.crawler.downloader.get(url)
+        except Exception as ex:
+            _LOG.error(f"Thread({self.worker_id}): Error fetching {url}: {ex}")
+            self.crawler.add_error(url, ex)
             return None
 
     def __is_same_domain(self, url: str) -> bool:
-        return self.main_domain == urlparse(url).netloc.lower().replace("www.", "")
+        return self.crawler.main_domain == urlparse(url).netloc.lower().replace(
+            "www.", ""
+        )

@@ -1,6 +1,6 @@
 # python-developer-test
 
-# Setup the Virtual Environment
+# Local Development
 
 Create the virtual environment.
 
@@ -13,16 +13,16 @@ pyenv activate url-crawler
 
 ## Install Dependencies
 
-This will install any required pacakges. Re-run this command if dependencies change.
+This will install any required packages. Re-run this command if dependencies change.
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.dev
 ```
 
 ## Run
 
 ```bash
-python src\__main__.py https://www.zego.com/ --log=error --use-cache
+python src\__main__.py https://www.zego.com/ --log=error --cache
 ```
 
 ## Test
@@ -31,26 +31,32 @@ python src\__main__.py https://www.zego.com/ --log=error --use-cache
 python
 ```
 
-# Notes
+## Lint
+
+```bash
+black .
+```
+
+# Test Notes
 IDE: VSCode
 AI: Copilot
 
 Added a lot of notes within the code, but here's a high level explanation of my approach:
 
-The first step was to solve the problem, so I focused on having a working solution before starting working on performance, more about it below.
+The first step was to solve the problem (First Commit), so I focused on having a working solution before starting working on performance.
 
 Created a module with a main crawler class that contains the business logic. The class is also composed (by dependency injection) with an http retriever and a html parser.
 
-Added some basic logging as well as some caching to exemplify the advantages of having a separate class that downloads the html.
+Added some basic logging as well as some caching as an hypothetical scenario to exemplify the advantages of having a separate class that downloads the html (Plus it was useful while developing).
 
-The CLI piece is a concrete client of the module and was built with argparse.
+The CLI piece is a concrete client of the urlparser module, uses standard argparse.
 
 ## Performance
 
-For the performance side concurrency is the clear path. While python is single threaded and bound to the GLI, a multi-threaded solution actually has a performance advantage due to the IO blocking nature of the downloads, in contrast to cpu intensive tasks.
+To improve performance: concurrency, more specifically multi-threading. While python is single threaded and bound to the GLI, a multi-threaded solution actually has a performance advantage in this case due to the IO blocking nature of the downloads. In comparison a multi-process approach is prefered for CPU intensive tasks.
 
-There are a lot of ways to approach concurrency in python, asyncio with async and await functions, multithreading and multiprocessing.
+There are a lot of ways to approach multithreading in python. asyncio with async and await functions is probably the most common. I chose a thread pool with consumers of a shared queue instead, as I figured I could showcase some less AI, less common implementation.
 
-I chose a thread pool with consumers of a shared queue. Choose this because asyncio may be the most common implementation out there, so I figured I could show a less common implementation.
+## Tests
 
 Added unit and integration tests.
