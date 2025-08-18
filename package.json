@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node bin/server.js",
     "build": "node ace build",
-    "dev": "node ace crawler https://www.kollo.ng",
+    "dev": "node ace crawler https://www.zego.com",
     "test": "node ace test",
     "lint": "eslint .",
     "format": "prettier --write .",

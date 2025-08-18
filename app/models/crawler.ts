@@ -1,17 +1,31 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
+import { CrawlerInterface } from '../interfaces/crawler.interface.js'
 
-export default class WebCrawler {
+export default class WebCrawler implements CrawlerInterface {
   baseUrl: URL
 
-  pageAndItsLinks: Record<string, string[]> = {}
+  pageAndItsLinks: Record<string, string[]>
 
-  visitedLinks: Set<string> = new Set<string>()
+  visitedLinks: Set<string>
 
-  queue: string[] = []
+  queue: string[]
 
-  constructor(baseUrl: string) {
+  queueHead: number
+
+  maxConcurrent: number
+
+  maxPagesToCrawl: number
+
+  constructor(baseUrl: string, maxConcurrent = 5, maxPagesToCrawl = 200) {
     this.baseUrl = new URL(baseUrl)
+    this.maxConcurrent = maxConcurrent
+    this.maxPagesToCrawl = maxPagesToCrawl
+
+    this.visitedLinks = new Set<string>()
+    this.queue = [this.baseUrl.href]
+    this.queueHead = 0
+    this.pageAndItsLinks = {}
   }
 
   async loadUrl(url: string): Promise<string> {
@@ -32,18 +46,7 @@ export default class WebCrawler {
     }
   }
 
-  private async crawlPageRecursively(baseUrl: string): Promise<void> {
-    if (this.visitedLinks.has(baseUrl)) {
-      return
-    }
-
-    this.visitedLinks.add(baseUrl)
-
-    const htmlContent = await this.loadUrl(baseUrl)
-    if (!htmlContent) {
-      return
-    }
-
+  extractLinks(htmlContent: string): string[] {
     const $ = cheerio.load(htmlContent)
     const foundUrls = new Set<string>()
 
@@ -51,47 +54,62 @@ export default class WebCrawler {
       const href = $(element).attr('href')
       if (!href) return
 
-      const absoluteUrl = this.getAbsoluteUrl(href)
+      const link = this.getAbsoluteUrl(href)
 
-      if (absoluteUrl) {
-        foundUrls.add(absoluteUrl)
-
-        if (!this.visitedLinks.has(absoluteUrl)) {
-          this.queue.push(absoluteUrl)
-        }
+      if (link) {
+        foundUrls.add(link)
       }
     })
 
-    console.log({ page: baseUrl, links: Array.from(foundUrls) })
-
-    this.pageAndItsLinks[baseUrl] = Array.from(foundUrls)
+    return Array.from(foundUrls)
   }
 
-  public async start(): Promise<void> {
-    this.queue.push(this.baseUrl.href)
+  async crawlPage(url: string): Promise<void> {
+    const htmlContent = await this.loadUrl(url)
+    if (!htmlContent) {
+      return
+    }
 
-    while (this.queue.length > 0) {
-      const currentUrl = this.queue.shift()
-      if (!currentUrl) continue
+    const extractedLinks = this.extractLinks(htmlContent)
+    this.pageAndItsLinks[url] = extractedLinks
 
-      await this.crawlPageRecursively(currentUrl)
-
-      if (this.visitedLinks.size >= 200) {
-        console.warn('limit reached')
-
-        break
+    for (const link of extractedLinks) {
+      if (!this.visitedLinks.has(link)) {
+        this.queue.push(link)
       }
     }
 
-    console.log(`Total unique pages crawled: ${this.visitedLinks.size}`)
+    console.log({ url, extractedLinks })
   }
 
-  private getAbsoluteUrl(link: string): string | null {
+  async worker(): Promise<void> {
+    while (this.queueHead < this.queue.length) {
+      const currentUrl = this.queue[this.queueHead++]
+      if (!currentUrl || this.visitedLinks.has(currentUrl)) continue
+
+      this.visitedLinks.add(currentUrl)
+
+      if (this.visitedLinks.size >= this.maxPagesToCrawl) {
+        console.warn('limit reached')
+        break
+      }
+
+      await this.crawlPage(currentUrl)
+
+      if (this.queueHead > 1000) {
+        this.queue = this.queue.slice(this.queueHead)
+        this.queueHead = 0
+      }
+    }
+  }
+
+  getAbsoluteUrl(link: string): string | null {
     try {
       const resolvedUrl: URL = new URL(link, this.baseUrl.href)
 
       if (resolvedUrl.hostname === this.baseUrl.hostname) {
         resolvedUrl.hash = ''
+
         return resolvedUrl.href
       }
     } catch (error: any) {
@@ -100,5 +118,12 @@ export default class WebCrawler {
     }
 
     return null
+  }
+
+  async start(): Promise<void> {
+    const workers = Array.from({ length: this.maxConcurrent }, () => this.worker())
+    await Promise.allSettled(workers)
+
+    console.log(this.visitedLinks.size, 'unique pages crawled ✅ ')
   }
 }
