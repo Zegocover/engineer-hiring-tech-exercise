@@ -107,6 +107,11 @@ npm install
 npm run start
 ```
 
+```shell
+node ace crawler --help # for more info
+node ace crawler https://www.zego.com/ --concurrency=10 --max-pages=400
+```
+
 ### How to Test
 ```shell
 npm run test
@@ -141,6 +146,7 @@ This allowed me to write a recursive function that would crawl each of the links
 it's queue, visited links, etc.
 - We could also upgrade to a distributed architecture, using a message queue and database to store the state of each
 domain and it's results.
+- Monitor rate limits and retry requests for the different domains.
 
 ### CLI Limitations
 - For realtime feedback, we need to constantly parse console output which has a performance cost.
@@ -154,8 +160,8 @@ limits, politeness delays, and so on.
 , redirects to other domains, and so on.
 - Integration tests with real websites to ensure system is working as expected.
 - Respecting robots.txt and other meta tags for different type of links
-
+- Instead of logging to console, we could use a logger to write to a file.
+- Connection reuse keepAlive agents can reduce TCP and TLS overhead for multiple requests.
 
 ## Other Notes / Personal Preferences
 - I avoid using comments (only where more context is needed), instead prefer to use easy to understand variable names.
-- I avoided using `any` type, instead prefer to use explicit types.

@@ -5,9 +5,8 @@
   "type": "module",
   "license": "UNLICENSED",
   "scripts": {
-    "start": "node bin/server.js",
+    "start": "node ace crawler https://www.kollo.ng",
     "build": "node ace build",
-    "dev": "node ace crawler https://www.zego.com",
     "test": "node ace test",
     "lint": "eslint .",
     "format": "prettier --write .",

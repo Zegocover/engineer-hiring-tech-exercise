@@ -55,7 +55,7 @@ export default class Crawler extends BaseCommand {
   }
 
   private async crawlAllLinks(): Promise<string> {
-    const webCrawler = new WebCrawler(this.baseURL, this.concurrency)
+    const webCrawler = new WebCrawler(this.baseURL, this.concurrency, this.maxPages)
 
     await webCrawler.start()
 
