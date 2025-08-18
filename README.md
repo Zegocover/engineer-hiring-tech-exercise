@@ -48,7 +48,7 @@ team of engineers that thrive on challenge and innovation.
 
 ## Who should be taking this test?
 
-This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
+This test has been created for all levels of developer, Junior through to Staff Engineer, and everyone in between.
 Ideally you have hands-on experience developing Python solutions using Object Oriented Programming methodologies in a
 commercial setting. You have good problem-solving abilities, a passion for writing clean and generally produce
 efficient, maintainable scaleable code.
@@ -61,7 +61,7 @@ The crawler will only process that single domain and not crawl URLs pointing to 
 Please employ patterns that will allow your crawler to run as quickly as possible, making full use any
 patterns that might boost the speed of the task, whilst not sacrificing accuracy and compute resources.
 Do not use tools like Scrapy or Playwright. You may use libraries for other purposes such as making HTTP requests,
-parsing HTML and other similar tasks.
+parsing HTML, and other similar tasks.
 
 ## The objective
 
@@ -95,17 +95,30 @@ constrained by time.
 
 - Node / TypeScript
 - Webstorm IDE
-- Gemini Code Assist and Jetbrains AI (for brainstorming ideas around the problem and handling & giving contextual
+- Gemini Code Assist and Jetbrains AI (for brainstorming ideas around the problem, bootstrapping & giving contextual
 suggestions.)
+
+## Usage
+
+### How to Run
+
+```shell
+npm install
+npm run start
+```
+
+### How to Test
+```shell
+npm run test
+```
 
 ## Understand the Problem
 
 I started by making sure I understood the problem. Initially, I assumed we are to load a given URL and the get all the
 links on that page.
 Then each of the links from the homepage, print the URL and all the links on the page.
-This seemed like a simple problem, but then I noticed that we want the crawler to run as quickly as possible without
-sacrificing accuracy and compute resources.
-Then it hit me that we want to recursively crawl all the links on the page.
+This seemed like a simple problem, but then I noticed the phrase, _we want the crawler to run as quickly as possible without
+sacrificing accuracy and compute resources._. Then it hit me that we want to recursively crawl all the links on the page.
 
 ## Tackling the Problem
 
@@ -131,19 +144,18 @@ domain and it's results.
 
 ### CLI Limitations
 - For realtime feedback, we need to constantly parse console output which has a performance cost.
-- No easy way to pause, resume or restart a long-running crawl.
+- No easy way to pause, resume, or restart a long-running crawl.
 A web API could provide a programmatic interface for starting, stopping, monitoring crawl jobs, and retrieving results,
  this is ideal for integration with other systems. We could also use a better config file format to manage concurrency
-limits, politeness delays and so on.
+limits, politeness delays, and so on.
 
 ### Further Refinements
 - Improved validations, taking into consideration the different types of links. e.g avoiding static files like images
-, redirects to other domains and so on.
+, redirects to other domains, and so on.
 - Integration tests with real websites to ensure system is working as expected.
 - Respecting robots.txt and other meta tags for different type of links
 
 
 ## Other Notes / Personal Preferences
-- I avoid using comments, instead prefer to use easy to undestand variable names.
-- I avoid using `any` type, instead prefer to use explicit types.
-- I 
+- I avoid using comments (only where more context is needed), instead prefer to use easy to understand variable names.
+- I avoided using `any` type, instead prefer to use explicit types.

@@ -79,22 +79,6 @@ test.group('WebCrawler Model', (group) => {
     ])
   })
 
-  test('getAbsoluteUrl resolves relative and absolute URLs', ({ assert }) => {
-    const crawler = new WebCrawler(MOCK_BASE_URL)
-
-    assert.equal(crawler.getAbsoluteUrl('/about'), 'https://example.com/about')
-    assert.equal(crawler.getAbsoluteUrl('contact'), 'https://example.com/contact')
-    assert.equal(crawler.getAbsoluteUrl('https://example.com/jobs'), 'https://example.com/jobs')
-  })
-
-  test('getAbsoluteUrl returns null for external or invalid URLs', ({ assert }) => {
-    const crawler = new WebCrawler(MOCK_BASE_URL)
-
-    assert.isNull(crawler.getAbsoluteUrl('https://external.com'))
-    assert.isNull(crawler.getAbsoluteUrl('mailto:test@example.com'))
-    assert.isNull(crawler.getAbsoluteUrl('javascript:void(0)'))
-  })
-
   test('crawlPage loads, extracts, and enqueues links', async ({ assert }) => {
     mock.onGet(`${MOCK_BASE_URL}/`).reply(200, MOCK_HTML_CONTENT)
 

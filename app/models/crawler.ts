@@ -1,6 +1,7 @@
 import axios from 'axios'
 import * as cheerio from 'cheerio'
-import { CrawlerInterface } from '../interfaces/crawler.interface.js'
+import { CrawlerInterface } from '#types/crawler.interface'
+import { getAbsoluteUrl } from '#helpers/utils'
 
 export default class WebCrawler implements CrawlerInterface {
   baseUrl: URL
@@ -13,8 +14,17 @@ export default class WebCrawler implements CrawlerInterface {
 
   queueHead: number
 
+  /**
+   * The maximum number of concurrent workers to use.
+   * @default 5
+   */
   maxConcurrent: number
 
+  /**
+   * The maximum number of pages to crawl.
+   * to avoid infinite loops.
+   * @default 200
+   */
   maxPagesToCrawl: number
 
   constructor(baseUrl: string, maxConcurrent = 5, maxPagesToCrawl = 200) {
@@ -54,7 +64,7 @@ export default class WebCrawler implements CrawlerInterface {
       const href = $(element).attr('href')
       if (!href) return
 
-      const link = this.getAbsoluteUrl(href)
+      const link = getAbsoluteUrl(href, this.baseUrl.href)
 
       if (link) {
         foundUrls.add(link)
@@ -79,6 +89,9 @@ export default class WebCrawler implements CrawlerInterface {
       }
     }
 
+    /**
+     * Log the extracted links for visibility purposes.
+     */
     console.log({ url, extractedLinks })
   }
 
@@ -101,23 +114,6 @@ export default class WebCrawler implements CrawlerInterface {
         this.queueHead = 0
       }
     }
-  }
-
-  getAbsoluteUrl(link: string): string | null {
-    try {
-      const resolvedUrl: URL = new URL(link, this.baseUrl.href)
-
-      if (resolvedUrl.hostname === this.baseUrl.hostname) {
-        resolvedUrl.hash = ''
-
-        return resolvedUrl.href
-      }
-    } catch (error: any) {
-      console.warn(`Error parsing: ${link}`, error.message)
-      return null
-    }
-
-    return null
   }
 
   async start(): Promise<void> {
