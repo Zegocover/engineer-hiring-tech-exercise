@@ -1,50 +1,49 @@
-# Zego
+# Requirements
 
-## About Us
+1. Java version > 17
+2. Docker
 
-At Zego, we understand that traditional motor insurance holds good drivers back.
-It's too complicated, too expensive, and it doesn't reflect how well you actually drive.
-Since 2016, we have been on a mission to change that by offering the lowest priced insurance for good drivers.
+# How to run
 
-From van drivers and gig economy workers to everyday car drivers, our customers are the driving force behind everything we do. We've sold tens of millions of policies and raised over $200 million in funding. And we’re only just getting started.
+Go to the root of project and execute the command below
 
-## Our Values
+```shell
+./gradlew bootBuildImage --imageName=crawler:latest
+```
 
-Zego is thoroughly committed to our values, which are the essence of our culture. Our values defined everything we do and how we do it.
-They are the foundation of our company and the guiding principles for our employees. Our values are:
+Please bear in mind Java path should be available (Java needs to be installed) to be able to run `./gradlew`
 
-<table>
-    <tr><td><img src="doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
-</table>
+Once the docker image is pushed to local registry you can simply run the command line as follows
 
-## The Engineering Team
+```shell
+docker run crawler:latest https://www.example.com/
+```
 
-Zego puts technology first in its mission to define the future of the insurance industry.
-By focusing on our customers' needs we're building the flexible and sustainable insurance products
-and services that they deserve. And we do that by empowering a diverse, resourceful, and creative
-team of engineers that thrive on challenge and innovation.
+or if you want to specify how many concurrent requests initiate execute as follows
 
-### How We Work
+```shell
+docker run crawler:latest https://www.example.com/ 50
+```
 
-- **Collaboration & Knowledge Sharing** - Engineers at Zego work closely with cross-functional teams to gather requirements,
-  deliver well-structured solutions, and contribute to code reviews to ensure high-quality output.
-- **Problem Solving & Innovation** - We encourage analytical thinking and a proactive approach to tackling complex
-  problems. Engineers are expected to contribute to discussions around optimization, scalability, and performance.
-- **Continuous Learning & Growth** - At Zego, we provide engineers with abundant opportunities to learn, experiment and
-  advance. We positively encourage the use of AI in our solutions as well as harnessing AI-powered tools to automate
-  workflows, boost productivity and accelerate innovation. You'll have our full support to refine your skills, stay
-  ahead of best practices and explore the latest technologies that drive our products and services forward.
-- **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
-  scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
+That means 50 concurrent requests, default is 50
 
-## The tests
+# How to run tests
 
-This repository contains the tests for the following roles:
+Just simply execute the command below
 
-- [Python Developer](python/README.md)
-- [Front-end Developer](front-end/README.md)
+```shell
+./gradlew test
+```
 
-Please visit the appropriate folder for the test you are doing and follow the instructions in the README file.
+# Assumptions
+1. Only public domain will be crawler and not local ones
+2. URL should be in full form of it means having scheme, host, and full domain such as https://www.google.com
+3. Base domain is based on the domain you give as the standard of internet, means https://google.com is different from https://www.google.com
+
+# Improvements
+
+1. I made the application to retry on too many requests (HTTP status 429) but due to lack of time, I did skip handling
+   other errors and simple just showing error happened
+2. I have not put stop count for instance say visit 1000 unique links and then stop or how many level of url can be
+   crawler, therefor, if you pass https://www.google.com then literally if will search for all www.google.com endpoint
+3. As the result is printed directly to console, I did not use the log4j to log the result as it will add additional fields which is not what I wanted, but as the improvement we could save the result of crawler to a file which then it distinguish it from the normal log 
