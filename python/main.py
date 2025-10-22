@@ -1,21 +1,17 @@
-import requests
 import sys
-import urllib.parse
 
 from bs4 import BeautifulSoup
 
-
-def get_domain(url: str) -> str:
-    return urllib.parse.urlparse(url).netloc.split(":")[0], urllib.parse.urlparse(url).scheme
+from config import Config
 
 
-visited_urls = set()
+def crawl_website(url: str):
+    config = Config()
+    visited_urls = config.visited_urls
 
-
-def crawl_website(url: str, domain: str, scheme: str):
+    # add the scheme if it's not present
     if not url.startswith("https://") and not url.startswith("http://"):
         url = "http://" + url
-
 
     if url in visited_urls:
         return
@@ -23,24 +19,21 @@ def crawl_website(url: str, domain: str, scheme: str):
     visited_urls.add(url)
 
     # make the request
-    response = requests.get(url)
+    response = config.session.get(url)
 
     # parse the response
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # find all the links
-    links = soup.find_all("a")
-
     # print the links
-    for link in links:
-        if link.get("href") is None:
+    for link in soup.find_all("a"):
+        href = link.get("href")
+        if href is None or href.startswith("#"):
             continue
-        if link.get("href").startswith("/"):
-            link = scheme + "://" + domain + link.get("href")
-            print(link)
-        else:
-            print(link.get('href'))
-
+        if href.startswith("/"):
+            href = config.scheme + "://" + config.domain + href
+        if href in visited_urls:
+            continue
+        print(href)
 
 
 if __name__ == "__main__":
@@ -48,12 +41,10 @@ if __name__ == "__main__":
         print("Usage: python main.py <url>")
         sys.exit(1)
 
-
+    config = Config()
     url = sys.argv[1]
 
     # validate the url and get the domain
-    domain, scheme = get_domain(url)
+    domain, scheme = config.get_domain(url)
 
-    print(f"domain: {domain}")
-    print(f"scheme: {scheme}")
-    crawl_website(url, domain, scheme)
+    crawl_website(url)
