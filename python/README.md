@@ -71,6 +71,21 @@ and what alternatives might be more suitable. Also, feel free to set the repo up
 Extend this README to include a detailed discussion about your design decisions, the options you considered and
 the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
 
+
+```
+poetry env use python
+
+poetry install
+
+```
+
+
+Run the tests:
+
+```
+poetry run python -m unittest unit/tests.py
+
+```
 # Instructions
 
 1. Create a repo.

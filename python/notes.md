@@ -16,8 +16,8 @@ Use the Producer - Consumer pattern to crawl the links concurrently.
 
 1. only continue to crawl the links which are part of the same domain (challenge requirement)
 
-- [ ] write the decision process as a separate function (accepts only absolute links, validates it, so no `#` allowed)
-- [ ] test this function to ensure that it would only decide to continue with the same domain
+- [x] write the decision process as a separate function (accepts only absolute links, validates it, so no `#` allowed)
+- [x] test this function to ensure that it would only decide to continue with the same domain
 
 This could still result in a non-stop recursive loop
 

@@ -1,9 +1,17 @@
 import sys
+import urllib.parse
 
 from bs4 import BeautifulSoup
 
 from config import Config
 
+
+def validate_url_domain(url: str) -> bool:
+    config = Config()
+    url_domain = urllib.parse.urlparse(url).netloc.split(":")[0]
+    if url_domain != config.domain:
+        return False
+    return True
 
 def crawl_website(url: str):
     config = Config()
