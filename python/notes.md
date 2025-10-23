@@ -25,15 +25,15 @@ This could still result in a non-stop recursive loop
 
 Make sure to store both links to be visited and also those which have been visited to avoid duplication
 
-- [ ] add urls_to_visit and visited_urls lists
-- [ ] test that these would only contain the URLs with the correct domain
+- [x] add and visited_urls lists
+- [x] test that these would only contain the URLs with the correct domain
 
 3. Throttle the requests
 
 In order to avoid overloading a service and the web scrapper failing, implement an optional timeout attribute to the crawl function;
 this attribute takes an integer (milliseconds)
 
-- [ ] use the same session `requests.Session()` across a single crawling session to reduce the pressure on target server
+- [x] use the same session `requests.Session()` across a single crawling session to reduce the pressure on target server
 
 How to decide when to use the throttle and by how much?
 
@@ -45,10 +45,6 @@ The status response could be not 200, how to handle that?
 a nice to have would be to add a reader for the `Retry-After` header
 Similarly, websites wary in the way the throttle requests, so a more intelligent algorithm could be set up to track this behaviour
 
-
-
-
-- [ ] check the `robots.txt`
 
 
 ## Nice to haves

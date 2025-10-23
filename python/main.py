@@ -2,6 +2,7 @@ import sys
 import urllib.parse
 
 from bs4 import BeautifulSoup
+from typing import Optional
 
 from config import Config
 
@@ -13,13 +14,13 @@ def validate_url_domain(url: str) -> bool:
         return False
     return True
 
-def crawl_website(url: str):
+def crawl_website(url: str, timeout: Optional[int] = None):
     config = Config()
     visited_urls = config.visited_urls
 
     # add the scheme if it's not present
     if not url.startswith("https://") and not url.startswith("http://"):
-        url = "http://" + url
+        url = config.scheme + "://" + url
 
     if url in visited_urls:
         return
@@ -27,7 +28,15 @@ def crawl_website(url: str):
     visited_urls.add(url)
 
     # make the request
-    response = config.session.get(url)
+    response = config.session.get(url, timeout=timeout)
+
+    if response.status_code != 200:
+        if response.status_code == 429 or response.status_code >= 500:
+            print("Too many requests or server error - these should be retried")
+            return
+        else:
+            # these are 4XX errors - most likely 404 or unauthorised - skip over them and head to next link
+            return
 
     # parse the response
     soup = BeautifulSoup(response.text, "html.parser")
@@ -39,8 +48,6 @@ def crawl_website(url: str):
             continue
         if href.startswith("/"):
             href = config.scheme + "://" + config.domain + href
-        if href in visited_urls:
-            continue
         print(href)
 
 
