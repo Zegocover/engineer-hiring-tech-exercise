@@ -46,6 +46,23 @@ a nice to have would be to add a reader for the `Retry-After` header
 Similarly, websites wary in the way the throttle requests, so a more intelligent algorithm could be set up to track this behaviour
 
 
+### In case of more time
+
+1. I started to add test suite, however, I ran out of time and did not want to submit an incomplete solution.
+I have however, re-organised the code which would allow easy testing, by making the functions self-sufficient.
+
+2. Instead of a Producer - Consumer pattern I ended up using something more of a pub-sub pattern with the WebCrawler being a worker.
+This class could be extended and retries could be added. It could probably be abstracted even further to support this pattern.
+
+3. Some kind of intelligent timeout detector based on the behaviour of the crawler - if a certain page is tricky to access due to timeout or throttle errors,
+exponential backstop or reading `Retry-After` header would help
+
+4. Further link validation to avoid parsing links that do not contain text
+
+5. In general, store the information, rather than just print it.
+
+6. More configuration e.g. for the num of threads.
+
 
 ## Nice to haves
 

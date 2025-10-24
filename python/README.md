@@ -72,20 +72,25 @@ Extend this README to include a detailed discussion about your design decisions,
 the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
 
 
+## The solution
+
+A simple threaded website crawler which uses Python threads to speed up the processing.
+
+### Installation and usage
+
 ```
 poetry env use python
 
+poetry env activate
+
 poetry install
 
-```
-
-
-Run the tests:
+poetry run python main.py <url>
 
 ```
-poetry run python -m unittest unit/tests.py
 
-```
+
+
 # Instructions
 
 1. Create a repo.
