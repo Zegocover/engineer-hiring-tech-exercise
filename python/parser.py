@@ -20,7 +20,7 @@ class Parser:
     async def process(self):
         await self.to_process.put(self.base_url)
         self.process_copy.add(self.base_url)
-        for i in range(30):
+        for i in range(3):
             self.tasks.append(asyncio.create_task(self._worker(i)))
         await self.to_process.join()
         pprint.pprint(self.output)
