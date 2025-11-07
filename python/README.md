@@ -71,6 +71,70 @@ and what alternatives might be more suitable. Also, feel free to set the repo up
 Extend this README to include a detailed discussion about your design decisions, the options you considered and
 the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
 
+## The Process
+
+### To run the program
+- Install requirements from [requirements.txt](requirements.txt)
+- run `python main.py <url>` with a url of your choice
+
+### Tools and libraries used
+- [Pycharm](https://www.jetbrains.com/pycharm/)
+- Python 3.12.11 ran in a virtual environment
+- [Beautiful Soup](https://beautiful-soup-4.readthedocs.io/en/latest/)
+- [TldExtract](https://pypi.org/project/tldextract/) to compare urls
+- [AIOHttp http client](https://docs.aiohttp.org/en/stable/client.html)
+- Python standard library (Collections, Asyncio, urllib)
+- Pytest for testing
+
+### Testing
+- Manual testing against multiple sites(https://monzo.com, https://realpython.github.io/fake-jobs/, https://crawler-test.com/) and then confirming that the output contained unique keys that belonged only to the baseurl as well as all the associated keys being urls
+
+
+### How I went about understanding the problem
+In the past I've worked on a similar take home project, so I'm familiar with common libraries in python used to parse html and pull out urls (in this case [Beautiful soup](https://beautiful-soup-4.readthedocs.io/en/latest/#)).
+To refamiliarise myself with the concept of a web scaper/crawler, I looked at [tutorials that exist on real python](https://realpython.com/beautiful-soup-web-scraper-python/) to do with building scrapers that pull out content as well as urls. 
+
+### How I built the solution
+After looking at the problem and doing my reading, my first thoughts were that a solution would require:
+
+- The ability to process pages concurrently specifically using asyncio since the main blocker here is I/O which non blocking async is very useful for. Also I've used async python a lot during my career vs multithreading/multiprocess. 
+- Utils to parse the html and pull out all of the urls found
+- A crawler implementation which maintains state of urls processed, urls to be processed and a dictionary that stores all the urls found under a given page
+
+My first passthrough was to create a version that processes each url sequentially but using asyncio to run the process to make it easier to switch to async processing of urls. 
+
+Starting with [main.py](main.py), we created the code to parse input given when running the program as well as kicking of an event loop and kicking off the parser task. 
+
+I then focussed on creating the [http client](clients/client.py) and [utils](utils) required to facilitate the scraping. These were done as modules as there was no inherent state needed for extracting urls from html or making a get call to urls. 
+
+For [clients.py](clients/client.py), we use aiohttp client to process a get for a specific url, check if the content_type of the response contains "text.html" and then return the body as a string. If it's not an html body, we return an empty string for now. 
+
+The first util was [html_parser.py](utils/html_parser.py) which uses beautiful soup to process the html. The second was [urls.py](utils/urls.py) which contains three functions
+
+- `clean_url` which takes a url and returns a sanitized version without fragments, query strings, trailing slashes as well as removing `www.`
+- `is_relative_url` checks for urls that start with a `/` to allow us to understand when urls are relative
+- `within_subdomain` takes the a url and the base url and checks that the fully qualified domain name matches that of the base url provided when starting the program.
+
+Once established, I started creating a [parser class](parser.py) that used sets to manage things to process vs what had been processed as well as a dict to store the urls found per page (key: list). 
+
+After running the code against some sites to see that it would parse through urls, I worked on allowing the code to work concurrently instead of sequentially. To do this, I had to switch to using a [Queue](https://docs.python.org/3/library/asyncio-queue.html#queue) to hold the urls to be processed and spawn a number of worker tasks on the event loop to continuously process the queue.
+
+At first I tried to have the workers run as long as the queue wasn't empty but that just ended up killing every worker bar one essentially sequentially processing the urls. I switched this to having the workers run forever and having the parser maintain a list of workers. The process function on the parser now spawns the tasks and then awaits the [Queue join function](https://docs.python.org/3/library/asyncio-queue.html#asyncio.Queue.join)  which will block until all items in the queue have been processed. After the join function returns, we pretty print the dictionary and then cancel the tasks to end which allows the program to proceed to the `loop.close()` in main.py.
+
+After running the code against a few sites, I noticed a few errors popping up when it came to what urls were being added to the queue. Turns out I had ignored the fact that the urls that could be found on a given page could be more than ones with the schemes `https, https and ""`. To handle this, I updated the [urls.py](utils/urls.py) `within_subdomain` function to check that the schemes are only within ones that we can process. This function is used by the [parser.py](parser.py) when deciding which urls to queue up to be processed. 
+
+
+### Things I'd do if I had the time or needed to scale up the solution
+
+- Add an option parameter to be passed into the program to control the number of worker tasks to be spawned. Just now it's just a hardcoded value. 
+- Update [client.py](clients/client.py) to handle retries when we receive certain status codes or connection errors. 
+- Add better exception handling and input validation. 
+- Handle dynamic content being returned from a get request
+- Add unit tests
+- Detecting redirects when fetching the url. 
+- If the design needed to scale, look at switching the design to a webserver to database backing or even redesigning to more of a distributed web crawler. 
+- If the design needed to be updated to handle multipe domain, update the program to handle a list of urls and update [main.py](main.py) to create a crawler for each url and run them using something like [asyncio.gather](https://docs.python.org/3/library/asyncio-task.html#asyncio.gather). Then update the [parser.py process function](parser.py) to return the output dict rather than print it so that the [main.py](main.py) can handle the outputs
+
 # Instructions
 
 1. Create a repo.
