@@ -1,8 +1,7 @@
 import asyncio
 import pprint
-from collections import defaultdict, Counter
+from collections import defaultdict
 from utils.html_parser import parse_urls_from_html
-from aiohttp import ClientResponseError
 from utils.urls import within_subdomain, is_relative_url
 
 from clients.client import get_html
@@ -25,8 +24,6 @@ class Parser:
             self.tasks.append(asyncio.create_task(self._worker(i)))
         await self.to_process.join()
         pprint.pprint(self.output)
-        pprint.pprint(Counter(self.output.keys()))
-        print(len(self.output.keys()))
         for task in self.tasks:
             task.cancel()
 
