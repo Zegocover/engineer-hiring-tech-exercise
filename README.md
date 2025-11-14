@@ -1,50 +1,101 @@
-# Zego
+# Zego Web Crawler (Kotlin)
 
-## About Us
+A simple, fast, domain-scoped web crawler written in Kotlin.  
+It prints every discovered URL in real time while crawling a single website.
 
-At Zego, we understand that traditional motor insurance holds good drivers back.
-It's too complicated, too expensive, and it doesn't reflect how well you actually drive.
-Since 2016, we have been on a mission to change that by offering the lowest priced insurance for good drivers.
+---
 
-From van drivers and gig economy workers to everyday car drivers, our customers are the driving force behind everything we do. We've sold tens of millions of policies and raised over $200 million in funding. And we’re only just getting started.
+## Architecture
 
-## Our Values
+The crawler is composed of four focused components:
 
-Zego is thoroughly committed to our values, which are the essence of our culture. Our values defined everything we do and how we do it.
-They are the foundation of our company and the guiding principles for our employees. Our values are:
+### **Fetcher**
 
-<table>
-    <tr><td><img src="doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
-</table>
+- Performs HTTP GET requests
+- Handles timeouts, retries, and exponential backoff
+- Special-case handling for `429 Retry-After`
+- Detects whether the response is HTML
 
-## The Engineering Team
+### **UrlNormalizer**
 
-Zego puts technology first in its mission to define the future of the insurance industry.
-By focusing on our customers' needs we're building the flexible and sustainable insurance products
-and services that they deserve. And we do that by empowering a diverse, resourceful, and creative
-team of engineers that thrive on challenge and innovation.
+- Converts relative or absolute links into canonical absolute URLs
+- Drops fragments and unsupported schemes
+- Ensures URLs remain within the same domain
+- Prevents duplicates through normalization
 
-### How We Work
+### **LinkParser**
 
-- **Collaboration & Knowledge Sharing** - Engineers at Zego work closely with cross-functional teams to gather requirements,
-  deliver well-structured solutions, and contribute to code reviews to ensure high-quality output.
-- **Problem Solving & Innovation** - We encourage analytical thinking and a proactive approach to tackling complex
-  problems. Engineers are expected to contribute to discussions around optimization, scalability, and performance.
-- **Continuous Learning & Growth** - At Zego, we provide engineers with abundant opportunities to learn, experiment and
-  advance. We positively encourage the use of AI in our solutions as well as harnessing AI-powered tools to automate
-  workflows, boost productivity and accelerate innovation. You'll have our full support to refine your skills, stay
-  ahead of best practices and explore the latest technologies that drive our products and services forward.
-- **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
-  scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
+- Extracts all meaningful `href` attributes using Jsoup
+- Filters out empty, malformed, or script-based links
 
-## The tests
+### **Crawler**
 
-This repository contains the tests for the following roles:
+- Fixed-size worker pool (Producer–Consumer model)
+- BFS crawling using a thread-safe queue
+- Synchronized visited set
+- Prints URLs in real time as they are discovered
+- Graceful shutdown when no work remains
 
-- [Python Developer](python/README.md)
-- [Front-end Developer](front-end/README.md)
+---
 
-Please visit the appropriate folder for the test you are doing and follow the instructions in the README file.
+## How to Run
+
+```bash
+./gradlew run --args="https://example.com"
+
+## Implementation Summary
+
+This project implements a domain-scoped, concurrency‑aware web crawler in Kotlin with a clean, testable architecture.  
+Below is a high‑level summary of the design decisions and the work completed.
+
+### What Has Been Implemented
+
+#### 1. Modular Architecture
+The crawler is composed of four focused components:
+- **Fetcher** - Performs HTTP requests and returns raw HTML.
+- **UrlNormalizer** - Resolves URLs, enforces same‑domain rules, removes duplicates through canonicalization.
+- **LinkParser** - Extracts structured links from HTML using Jsoup.
+- **Crawler** - Orchestrates fetching, parsing, and traversal using BFS and a concurrency‑limited worker.
+
+This separation allows each piece to be tested independently and extended easily.
+
+#### 2. Concurrency Model
+The crawler uses:
+- `coroutineScope` for structured concurrency
+- `Semaphore` to enforce a strict `maxConcurrency`
+- A single worker coroutine consuming from a thread‑safe queue  
+  This avoids race conditions and ensures deterministic behaviour in tests.
+
+#### 3. Visited Set + Queue
+A thread‑safe `ConcurrentHashMap.newKeySet()` is used to prevent re‑visiting URLs.  
+The queue implements BFS, which is more memory‑stable and predictable compared to DFS.
+
+#### 4. Full Test Suite
+A comprehensive set of **unit tests** and **integration tests** was created:
+- Normalizer tests (including parameterized cases)
+- LinkParser tests
+- Fetcher behaviour tests
+- Crawler logic tests (BFS, dedupe, domain filtering, concurrency limit)
+- Full integration test using an in‑memory HTTP server and fake parser
+
+These ensure correctness, isolation, and regression safety.
+
+#### 5. Production‑Ready Design Choices
+- OkHttp for robust HTTP handling  
+- Jsoup for safe HTML parsing  
+- Clear separation of pure logic vs. side effects  
+- Deterministic behaviour suitable for CI testing  
+- Simple CLI entry point using Kotlin's `main`  
+
+### Possible Extensions
+Given more time, this crawler could be extended to:
+- Crawl multiple domains concurrently
+- Persist crawl results to a database or Kafka
+- Add robots.txt support
+- Implement distributed work queues
+- Provide a web UI or REST API wrapper
+- Export metrics with OpenTelemetry
+
+---
+
+This summary describes the approach, trade‑offs, and key decisions in the implementation, making the project easy to review and understand.
