@@ -3,12 +3,14 @@ package crawler
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import java.net.URI
 import java.util.stream.Stream
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class UrlNormalizerTest {
 
     private val normalizer: UrlNormalizer = DefaultUrlNormalizer()
@@ -58,23 +60,18 @@ class UrlNormalizerTest {
         assertNull(result)
     }
 
-    companion object {
-        @JvmStatic
-        fun absoluteUrls(): Stream<Arguments> = Stream.of(
-            Arguments.of("https://example.com/abc", "https://example.com/abc"),
-            Arguments.of("https://example.com/xyz?q=1", "https://example.com/xyz")
-        )
+    private fun absoluteUrls(): Stream<Arguments> = Stream.of(
+        Arguments.of("https://example.com/abc", "https://example.com/abc"),
+        Arguments.of("https://example.com/xyz?q=1", "https://example.com/xyz")
+    )
 
-        @JvmStatic
-        fun relativeUrls(): Stream<Arguments> = Stream.of(
-            Arguments.of("../other", "https://example.com/other"),
-            Arguments.of("./child", "https://example.com/path/child")
-        )
+    private fun relativeUrls(): Stream<Arguments> = Stream.of(
+        Arguments.of("../other", "https://example.com/other"),
+        Arguments.of("./child", "https://example.com/path/child")
+    )
 
-        @JvmStatic
-        fun invalidUrls(): Stream<Arguments> = Stream.of(
-            Arguments.of("http://exa mple.com"),
-            Arguments.of("::::://bad_url")
-        )
-    }
+    private fun invalidUrls(): Stream<Arguments> = Stream.of(
+        Arguments.of("http://exa mple.com"),
+        Arguments.of("::::://bad_url")
+    )
 }
