@@ -11,7 +11,7 @@ object ParserTest extends ScalamockZIOSpec:
 
   override def spec: Spec[TestEnvironment & Scope, Any] = invlid + valid
 
-  val invlid = suite("invalid inputs")(
+  val invlid = suite("Parser with invalid inputs")(
     test("should ignore invalid href") {
       val doc =
         """
@@ -68,7 +68,7 @@ object ParserTest extends ScalamockZIOSpec:
     }.provide(mock[HttpClient])
   )
 
-  val valid = suite("valid inputs")(
+  val valid = suite("Parser with valid inputs")(
     test("should normalize urls") {
       val doc =
         """
