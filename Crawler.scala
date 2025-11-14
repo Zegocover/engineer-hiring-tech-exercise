@@ -12,30 +12,29 @@ class Crawler(domain: String, numThreads: Int):
 
   def crawl(startUrl: String): ZIO[Any, Throwable, Unit] = for
     _ <- ZIO.logInfo(s"starting crawling for domain: $domain")
-    // _ <- task(startUrl)
-    _ <- task(startUrl)
+    _ <- loop(Seq(startUrl))
     _ <- ZIO.logInfo(s"finish crawling for domain: $domain")
   yield ()
 
-  private def task(url: String): ZIO[Any, Nothing, Any] =
-    val processed = visitedUrls.getOrElseUpdate(url, false)
-    if processed
-    then ZIO.unit
-    else task0(url).ignore
+  private def loop(url: Seq[String]): ZIO[Any, Throwable, Unit] =
+    ZStream.fromIterable(url)
+      .flatMapPar(numThreads): url =>
+        // TODO: Add logging for errors
+        ZStream.fromIterableZIO(worker(url).orElseSucceed(Seq.empty[String]))
+      .runCollect
+      .flatMap(loop)
 
-  private def task0(url: String): ZIO[Any, Throwable, Seq[String]] = for
+  private def worker(url: String) = for
     /* TODO: make fetching html more configurable: rate limiter, retry, follow redirects
         use another library, e.g. sttp-client, zio-http */
+    _ <- ZIO.attempt(visitedUrls.put(url, true))
+
     doc <- ZIO.attemptBlocking(Jsoup.connect(url).get())
     urls <- ZIO.attempt(Parser().parse(doc, domain))
-
-    _ <- ZIO.attempt(visitedUrls.put(url, true))
 
     filteredUrls = urls.filter(checkDomain)
       .filterNot(visitedUrls.isDefinedAt)
     _ <- printResult(url, urls)
-
-    _ <- ZIO.foreachPar(filteredUrls)(task)
   yield filteredUrls
 
   private def printResult(base: String, urls: Seq[String], onlyDomain: Boolean = true) = {
