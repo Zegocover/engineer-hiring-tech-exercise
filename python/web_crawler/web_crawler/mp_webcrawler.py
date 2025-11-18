@@ -1,15 +1,12 @@
 import multiprocessing
-from multiprocessing import Queue, Process
+from queue import Queue
 from threading import Thread
 from time import sleep
 
-
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 from requests import HTTPError
-
 from web_crawler.url import URL
-
 
 
 class MPWebCrawler:
@@ -31,19 +28,24 @@ class MPWebCrawler:
             r = requests.get(url.url_string)
             r.raise_for_status()
         except HTTPError as e:
+            print(f"WARNING: {e}")
             return ""
 
-        with open(f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb") as f:
+        with open(
+            f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb"
+        ) as f:
             f.write(r.content)
 
         return r.content
 
     def get_data_local(self, url: URL):
         try:
-            with open(f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb") as f:
+            with open(
+                f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb"
+            ) as f:
                 return f.read()
 
-        except:
+        except IOError:
             return self.get_data(url)
 
     def get_links(self, page_content: str):
@@ -52,16 +54,16 @@ class MPWebCrawler:
         """
         soup = BeautifulSoup(page_content, "html.parser")
         links = soup.find_all("a")
-        links = [l["href"] for l in links if l.has_attr("href")]
+        links = [link["href"] for link in links if link.has_attr("href")]
 
         return links
 
     def get_all_valid_links(self, url: URL):
         content = self.get_data_local(url)
         links = self.get_links(content)
-        links = [URL(l) for l in links]
+        links = [URL(link) for link in links]
         links = [url.make_absolute(self.domain) for url in links]
-        links = [l for l in links if l.get_domain()==self.domain]
+        links = [link for link in links if link.get_domain() == self.domain]
 
         # Drop trivial links back to self
         if url in links:
@@ -69,12 +71,13 @@ class MPWebCrawler:
 
         return list(set(links))
 
-
     def work_queue(self, q: Queue):
         while True:
             url, depth = self.q.get(block=True)
 
-            self.visited_links[url] = depth  # TODO check this is maintained across threads?
+            self.visited_links[
+                url
+            ] = depth  # TODO check this is maintained across threads?
 
             links = self.get_all_valid_links(url)
             output = str(f"{url} contains {len(links)} links")
@@ -105,8 +108,9 @@ class MPWebCrawler:
             sleep(1)
 
         # TODO
-        # As this code stands, the processes won't finish. We need a way to detect every worker is finished before
-        # allowing any to finish. We can't rely on the queue being empty because another worker may add to it.
+        # As this code stands, the processes won't finish. We need a way to
+        # detect every worker is finished before allowing any to finish.
+        # We can't rely on the queue being empty because another worker may add to it.
 
 
 if __name__ == "__main__":

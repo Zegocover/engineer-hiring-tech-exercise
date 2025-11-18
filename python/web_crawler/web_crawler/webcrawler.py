@@ -1,11 +1,12 @@
 from typing import List
 
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 from requests import HTTPError
 from web_crawler.url import URL
 
 if __name__ == "__main__":
+
     class WebCrawler:
         def __init__(self, max_depth: int = 3):
             self.max_depth = max_depth
@@ -36,7 +37,9 @@ if __name__ == "__main__":
                 print(f"WARNING: Get {url} failed. Exception: {e}")
                 return ""
 
-            with open(f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb") as f:
+            with open(
+                f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb"
+            ) as f:
                 f.write(r.content)
 
             return r.content
@@ -44,10 +47,12 @@ if __name__ == "__main__":
         def get_data_local(self, url: URL):
             """TODO: DELETE"""
             try:
-                with open(f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb") as f:
+                with open(
+                    f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb"
+                ) as f:
                     return f.read()
 
-            except:
+            except IOError:
                 return self.get_data(url)
 
         def get_links(self, page_content: str) -> List[URL]:
@@ -62,7 +67,7 @@ if __name__ == "__main__":
             """
             soup = BeautifulSoup(page_content, "html.parser")
             links = soup.find_all("a")
-            links = [URL(l["href"]) for l in links if l.has_attr("href")]
+            links = [URL(link["href"]) for link in links if link.has_attr("href")]
 
             return links
 
@@ -81,7 +86,7 @@ if __name__ == "__main__":
             links = self.get_links(content)
 
             links = [url.make_absolute(self.domain) for url in links]
-            links = [l for l in links if l.get_domain()==self.domain]
+            links = [link for link in links if link.get_domain() == self.domain]
 
             # Drop trivial links back to self
             if url in links:
@@ -109,8 +114,9 @@ if __name__ == "__main__":
 
         def _crawl(self, url: URL, current_depth: int = 0) -> None:
             """
-            Iterates the crawling, finding all links from `url` and recursively calling this function on them until
-            maximum depth is achieved
+            Iterates the crawling, finding all links from `url` and
+            recursively calling this function on them until max
+            depth is achieved
 
             Args:
                 url: URL to be crawled
@@ -142,8 +148,6 @@ if __name__ == "__main__":
 
             self._set_domain(url)
             self._crawl(url)
-
-
 
 
 if __name__ == "__main__":
