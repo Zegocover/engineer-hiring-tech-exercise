@@ -62,7 +62,7 @@ class MPWebCrawler:
         content = self.get_data_local(url)
         links = self.get_links(content)
         links = [URL(link) for link in links]
-        links = [url.make_absolute(self.domain) for url in links]
+        links = [link.make_absolute(url) for link in links]
         links = [link for link in links if link.get_domain() == self.domain]
 
         # Drop trivial links back to self
