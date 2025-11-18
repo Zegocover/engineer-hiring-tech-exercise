@@ -60,9 +60,9 @@ class URL:
         else:
             return url_str
 
-    def make_absolute(self, domain: str):
+    def make_absolute(self, parent_url: "URL"):
         """
-        Makes a url string absolute, whether it's currently absolute or not.
+        Makes a url absolute whether it's currently absolute or not.
         Will ignore `domain` if the url already has a domain element.
 
         e.g.
@@ -76,4 +76,4 @@ class URL:
         Returns:
 
         """
-        return URL(urllib.parse.urljoin(domain, self.url_string))
+        return URL(urllib.parse.urljoin(parent_url.url_string, self.url_string))

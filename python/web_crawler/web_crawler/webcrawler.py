@@ -32,27 +32,10 @@ class WebCrawler:
         try:
             r = requests.get(url.url_string)
             r.raise_for_status()
+            return r.content
         except HTTPError as e:
             print(f"WARNING: Get {url} failed. Exception: {e}")
             return ""
-
-        with open(
-            f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb"
-        ) as f:
-            f.write(r.content)
-
-        return r.content
-
-    def get_data_local(self, url: URL):
-        """TODO: DELETE"""
-        try:
-            with open(
-                f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb"
-            ) as f:
-                return f.read()
-
-        except IOError:
-            return self.get_data(url)
 
     def get_links(self, page_content: str) -> List[URL]:
         """
@@ -81,10 +64,10 @@ class WebCrawler:
         Returns:
             list of distinct URL objects
         """
-        content = self.get_data_local(url)
+        content = self.get_data(url)
         links = self.get_links(content)
 
-        links = [url.make_absolute(self.domain) for url in links]
+        links = [link.make_absolute(url) for link in links]
         links = [link for link in links if link.get_domain() == self.domain]
 
         # Drop trivial links back to self
@@ -147,8 +130,3 @@ class WebCrawler:
 
         self._set_domain(url)
         self._crawl(url)
-
-
-if __name__ == "__main__":
-    wc = WebCrawler(max_depth=3)
-    wc.crawl("https://www.craigslist.org/about/help/?lang=en&cc=gb")

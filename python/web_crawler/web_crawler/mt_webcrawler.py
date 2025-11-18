@@ -9,7 +9,7 @@ from requests import HTTPError
 from web_crawler.url import URL
 
 
-class MPWebCrawler:
+class MTWebCrawler:
     def __init__(self, max_depth: int = 3):
         self.max_depth = max_depth
         self.domain = None
@@ -104,15 +104,9 @@ class MPWebCrawler:
             thread.start()
             threads.append(thread)
 
-        while True:
-            sleep(1)
+        sleep(20)
 
         # TODO
         # As this code stands, the processes won't finish. We need a way to
         # detect every worker is finished before allowing any to finish.
         # We can't rely on the queue being empty because another worker may add to it.
-
-
-if __name__ == "__main__":
-    wc = MPWebCrawler(max_depth=3)
-    wc.crawl(URL("https://bac.org.uk/"))
