@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./example-html-site/webroot:/usr/share/nginx/html
