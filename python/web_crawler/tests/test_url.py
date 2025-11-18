@@ -93,23 +93,23 @@ class TestRemoveUrlFragment(unittest.TestCase):
 class TestMakeAbsolute(unittest.TestCase):
     def test_make_absolute_from_relative_path(self):
         url = URL("./page.html")
-        abs_url = url.make_absolute("https://example.com")
+        abs_url = url.make_absolute(URL("https://example.com"))
         self.assertIsInstance(abs_url, URL)
         self.assertEqual("https://example.com/page.html", str(abs_url))
 
     def test_make_absolute_does_not_override_existing_domain(self):
         url = URL("https://a.com/page.html")
-        abs_url = url.make_absolute("https://b.com")
+        abs_url = url.make_absolute(URL("https://b.com"))
         self.assertEqual("https://a.com/page.html", str(abs_url))
 
     def test_make_absolute_with_same_domain(self):
         url = URL("https://example.com/path/page.html")
-        abs_url = url.make_absolute("https://example.com")
+        abs_url = url.make_absolute(URL("https://example.com"))
         self.assertEqual("https://example.com/path/page.html", str(abs_url))
 
     def test_make_absolute_handles_trailing_slash_in_domain(self):
         url = URL("sub/page")
-        abs_url = url.make_absolute("https://example.com/")
+        abs_url = url.make_absolute(URL("https://example.com/"))
         self.assertEqual("https://example.com/sub/page", str(abs_url))
 
 
