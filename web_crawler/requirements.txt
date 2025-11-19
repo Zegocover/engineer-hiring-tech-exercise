@@ -1,0 +1,6 @@
+aiohttp>=3.8
+beautifulsoup4>=4.9
+lxml>=4.6
+pytest>=7.0
+pytest-asyncio>=0.20
+pytest-aiohttp>=1.0
