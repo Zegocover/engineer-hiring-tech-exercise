@@ -78,3 +78,124 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@2014klee, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+# Screenshot
+![img.png](img.png)
+# Information about tooling
+## IDE and use of AI
+I use PyCharm as my IDE. This has an AI code completion built in. I do not heavily rely on this but occasionally accept
+suggestions.
+I more heavily use the AI for test generation. This is primarily generating test data. This involves using prompts like
+'Generate a set of linked webpages that can be used as the basis for an integration test for the WebCrawler class.'
+Whilst writing some of my tests, I have used the AI to write the tests themselves, e.g. with prompts like 'Write unit
+tests for the make_absolute method of URL class.'  I do not blindly accept AI generated code, but find it generally excellent
+at unit testing.
+
+# Usage
+## Running locally
+Install requirements:
+```
+pip install -r requirements.txt
+pip install -e ./
+```
+or
+```
+make requirements
+```
+
+Run the crawler:
+```
+python web_crawler/crawl.py --url https://zego.com --depth 2
+```
+This command will crawl the passed URL and print the results. The depth parameter controls how many links the crawler
+will follow from the starting page before terminating.
+
+## Docker container
+For convenience, a Docker container is provided which can also run the crawler. Build the container:
+```
+docker build -t webcrawler .
+```
+or
+```
+make docker-build
+```
+And run the container with arguments as follows:
+```
+docker run -e URL=https://www.dogstrust.org.uk/ -e DEPTH=1 webcrawler
+```
+# Solution approach
+### Single-threaded option
+* The STWebCrawler class takes a start URL, finds all the links on that page and then recursively repeats this process until a maximum depth has been reached (or no further links can be followed).
+* Complexity around URLs is encapsulated in the URL class.
+* This STWebCrawler class is instantiated and demonstrated in the `crawl.py` script.
+
+### Multi-threaded option
+* A single threaded option is presented as my 'main' solution (see STWebcrawler).
+* I wanted to explore a more scalable, parallelised approach.
+* I used the threading library to achieve this, maintaining a common queue that each library can pull from and submit newly found links to
+* There is an open issue around knowing when to terminate threads I've discussed further in that code
+* The single threaded approach is the main approach I've developed and tested, code in the multi-threaded approach is less optimised and tested
+* The multi-threaded approach can be used by passing `--multi-threaded` to `crawl.py`
+
+# Design Considerations
+### Complexity of URLS
+* URLs can be absolute or relative. Relative URLs are relative to the page they link from so we have to resolve these in
+order to crawl effectively. This is done in the URL class with urllib.
+* URLs can be to specific locations within a page using the fragment pattern e.g. `http://a.com/link.html#about`. The fragment component is not of use and is discarded within the URL class.
+* URLs can have optional trailing slashes which point to the same resource, e.g. `/products/` and `/products`. This is handled within the URL class.
+* Some URLs are to none web resources e.g. `mailto:`
+* Some URLs are to javascript functions e.g. `<a href="javascript:doSomething();">`
+* URLs can contain query parameters, e.g. `year=2025`. I have interpreted the same page with different query parameters to represent distinct pages.
+
+### Subdomains
+* The requirement is for the crawler to only crawl within the same subdomain.
+* I've interpreted this to mean www.amazon.com is different than amazon.com.
+* Although there is a convention that `www.` points to the same resources as no subdomain, this will occasionally not be followed so they are treated separately
+
+### Link cycles
+* It's quite normal for webpages to cyclically link to each other
+* e.g. A -> B, B -> C, C -> A
+* We therefore maintain a list of crawled links in the crawler and don't revisit pages we've already crawled
+
+### Termination
+* The class must be run with a max_depth, this indicates how many links will be followed before the script terminates
+* I intended to make this parameter optional and allow any depth to be searched but have not had time to implement this
+
+### Dynamic content
+* Sometimes pages contain dynamic content that will be loaded after initial load which could contain more links. This is not handled by this project.
+
+### Anti-scraping
+* Most websites will block repeated requests from scrapers or perceived DoS attacks.
+* This project does not yet handle this.
+* A further development of this project would look for ways to mitigate this
+  * e.g. by deliberately slowing requests
+  * including realistic browser headers in the request
+
+### Handling non-200 status codes
+* HTTP allows for a number of status codes that could influence scraping behaviour
+* e.g. 302 indicates redirection, which the scraper should ideally follow
+* 503 indicates the server is currently unavailable, which ideally means the scraper should retry later
+* I have not generally handled these scenarios and others, instead HTTP errors are effectively suppressed. This is purely due to lack of time.
+
+# Tests
+* Code is unit tested in python/web_crawler/tests
+* Integration tests also exist in this
+* These can be run with `make test` or `pytest web_crawler/tests'
+
+# Rejected approaches
+### Graph approach
+* I tried constructing a networkx graph of the site structure as the site was crawled in order to know whether sites were already crawled or not but realised this was unnecessary and likely to be less performant than a simple map
+### Multiprocessing
+* I considered trying to use multiple processes to parallelise the task. This required creating a shared state of the already crawled sites accessible by all processes and was abandoned in favour of multithreading.
+
+# Proposed Future improvements
+### Scaling
+* Further work investing in the multithreaded approach to tune and address termination
+* A distributed system could be built using multiple worker nodes to scrape pages being orchestrated by a manager node that maintains the state of which pages have been scraped and the queue of outstanding scraping tasks. This would likely involve creating a messaging system for communicating between the orchestrator and worker nodes.
+
+### Robustness
+* Much more work is required to correctly handle different HTTP errors correctly
+
+### Completeness
+* The use of the python requests library means javascript is not being executed and dynamic content isn't loaded
+* Use of a headless browser could solve this
