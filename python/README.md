@@ -132,7 +132,7 @@ docker run -e URL=https://www.dogstrust.org.uk/ -e DEPTH=1 webcrawler
 ### Multi-threaded option
 * A single threaded option is presented as my 'main' solution (see STWebcrawler).
 * I wanted to explore a more scalable, parallelised approach.
-* I used the threading library to achieve this, maintaining a common queue that each library can pull from and submit newly found links to
+* I used the threading library to achieve this, maintaining a common queue that each Process can pull from and submit newly found links to
 * There is an open issue around knowing when to terminate threads I've discussed further in that code
 * The single threaded approach is the main approach I've developed and tested, code in the multi-threaded approach is less optimised and tested
 * The multi-threaded approach can be used by passing `--multi-threaded` to `crawl.py`
