@@ -63,7 +63,7 @@ class URL:
     def make_absolute(self, parent_url: "URL"):
         """
         Makes a url absolute whether it's currently absolute or not.
-        Will ignore `domain` if the url already has a domain element.
+        Will ignore parent_url's domain if the url already has a domain element.
 
         e.g.
         URL('./page.html').make_absolute('https://a.com')
