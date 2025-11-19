@@ -3,15 +3,15 @@ from http.client import HTTPException
 from unittest.mock import MagicMock, mock_open, patch
 
 from requests import HTTPError
-from web_crawler.st_webcrawler import WebCrawler
+from web_crawler.st_webcrawler import STWebCrawler
 from web_crawler.url import URL
 
 
 class TestWebCrawlerGetData(unittest.TestCase):
-    @patch("web_crawler.webcrawler.requests.get")
+    @patch("web_crawler.st_webcrawler.requests.get")
     def test_get_data_success(self, mock_get):
         # Arrange
-        wc = WebCrawler()
+        wc = STWebCrawler()
         url = URL("https://example.com/page")
         mock_response = MagicMock()
         mock_response.content = b"<html><a href='test.html'>test</a></html>"
@@ -25,10 +25,10 @@ class TestWebCrawlerGetData(unittest.TestCase):
         mock_response.raise_for_status.assert_called_once()
         self.assertEqual(b"<html><a href='test.html'>test</a></html>", result)
 
-    @patch("web_crawler.webcrawler.requests.get")
+    @patch("web_crawler.st_webcrawler.requests.get")
     def test_get_data_http_error_returns_empty_string(self, mock_get):
         # Arrange
-        wc = WebCrawler()
+        wc = STWebCrawler()
         url = URL("https://example.com/error")
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = HTTPError("404 Not Found")
@@ -44,7 +44,7 @@ class TestWebCrawlerGetData(unittest.TestCase):
 
 class TestWebCrawlerGetLinks(unittest.TestCase):
     def test_get_links_parses_anchor_hrefs_to_url_objects(self):
-        wc = WebCrawler()
+        wc = STWebCrawler()
         html = """
         <html>
             <body>
@@ -64,9 +64,9 @@ class TestWebCrawlerGetLinks(unittest.TestCase):
 
 
 class TestWebCrawlerGetAllValidLinks(unittest.TestCase):
-    @patch.object(WebCrawler, "get_links")
-    def test_get_all_valid_links_filters_and_normalises(self, mock_get_links):
-        wc = WebCrawler()
+    @patch.object(STWebCrawler, "get_links")
+    def test_get_all_valid_links_filters(self, mock_get_links):
+        wc = STWebCrawler()
         base = URL("https://example.com/start")
         wc.domain = "https://example.com"
 
@@ -92,7 +92,7 @@ class TestWebCrawlerGetAllValidLinks(unittest.TestCase):
 
 class TestWebCrawlerPrintUrl(unittest.TestCase):
     def test_print_url_outputs_expected_format(self):
-        wc = WebCrawler()
+        wc = STWebCrawler()
         url = URL("https://example.com/start")
         links = [URL("https://example.com/a"), URL("https://example.com/b")]
 
@@ -109,7 +109,7 @@ class TestWebCrawlerPrintUrl(unittest.TestCase):
 
 class TestWebCrawlerCrawlLogic(unittest.TestCase):
     def test_crawl(self):
-        wc = WebCrawler(max_depth=2)
+        wc = STWebCrawler(max_depth=2)
         start_url = URL("https://example.com/start")
 
         # Map of URL -> list of child URLs (all same domain)
@@ -124,9 +124,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
             return url_graph.get(url, [])
 
         with patch.object(
-            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+            STWebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
         ):
-            with patch.object(WebCrawler, "print_url"):  # suppress printing
+            with patch.object(STWebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 
         # Domain set from starting URL
@@ -146,7 +146,7 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         self.assertEqual(2, wc.visited_links[URL("https://example.com/c")])
 
     def test_crawl_low_depth(self):
-        wc = WebCrawler(max_depth=1)
+        wc = STWebCrawler(max_depth=1)
         start_url = URL("https://example.com/start")
 
         # Map of URL -> list of child URLs (all same domain)
@@ -161,9 +161,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
             return url_graph.get(url, [])
 
         with patch.object(
-            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+            STWebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
         ):
-            with patch.object(WebCrawler, "print_url"):  # suppress printing
+            with patch.object(STWebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 
         # Domain set from starting URL
@@ -179,7 +179,7 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         self.assertEqual(1, wc.visited_links[URL("https://example.com/b")])
 
     def test_crawl_with_str_url(self):
-        wc = WebCrawler(max_depth=2)
+        wc = STWebCrawler(max_depth=2)
         start_url = "https://example.com/start"
 
         # Map of URL -> list of child URLs (all same domain)
@@ -197,9 +197,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
             return url_graph.get(url, [])
 
         with patch.object(
-            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+            STWebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
         ):
-            with patch.object(WebCrawler, "print_url"):  # suppress printing
+            with patch.object(STWebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 
         # Domain set from starting URL

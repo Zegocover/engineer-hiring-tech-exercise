@@ -2,8 +2,7 @@ import unittest
 from io import StringIO
 from unittest.mock import patch
 
-from web_crawler.mt_webcrawler import MTWebCrawler
-from web_crawler.st_webcrawler import WebCrawler
+from web_crawler.st_webcrawler import STWebCrawler
 from web_crawler.url import URL
 
 
