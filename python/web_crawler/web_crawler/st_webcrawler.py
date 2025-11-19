@@ -38,7 +38,8 @@ class STWebCrawler(WebCrawler):
             r.raise_for_status()
             return r.content
         except HTTPError as e:
-            # TODO - we can do much more sophisticated error handling here, e.g. 503s should be retried
+            # TODO - we can do much more sophisticated error handling
+            #  here, e.g. 503s should be retried
             logger.warning(f"Get {url} failed. Exception: {e}")
             return ""
 

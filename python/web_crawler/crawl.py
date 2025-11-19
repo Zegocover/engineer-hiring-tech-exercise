@@ -6,6 +6,7 @@ from web_crawler.url import URL
 
 logger = logging.getLogger(__name__)
 
+
 def main(url: str, max_depth: int, multi_threaded: bool | None) -> None:
     logging.basicConfig(level=logging.INFO)
 

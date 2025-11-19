@@ -66,9 +66,14 @@ class URL:
         Will ignore `domain` if the url already has a domain element.
 
         e.g.
-        URL('./page.html').make_absolute('https://a.com') -> 'https://a.com/page.html'
-        URL('https://a.com/page.html').make_absolute('https://a.com') -> 'https://a.com/page.html'
-        URL('https://a.com/page.html').make_absolute('https://b.com') -> 'https://a.com/page.html'
+        URL('./page.html').make_absolute('https://a.com')
+         -> 'https://a.com/page.html'
+
+        URL('https://a.com/page.html').make_absolute('https://a.com')
+         -> 'https://a.com/page.html'
+
+        URL('https://a.com/page.html').make_absolute('https://b.com')
+         -> 'https://a.com/page.html'
 
         Args:
             domain ():

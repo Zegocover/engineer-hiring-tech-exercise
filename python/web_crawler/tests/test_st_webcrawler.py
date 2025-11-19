@@ -1,6 +1,5 @@
 import unittest
-from http.client import HTTPException
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 from requests import HTTPError
 from web_crawler.st_webcrawler import STWebCrawler
@@ -58,7 +57,7 @@ class TestSTWebCrawlerGetLinks(unittest.TestCase):
         links = wc.get_links(html)
 
         self.assertEqual(2, len(links))
-        self.assertTrue(all(isinstance(l, URL) for l in links))
+        self.assertTrue(all(isinstance(link, URL) for link in links))
         self.assertIn(URL("https://example.com/a"), links)
         self.assertIn(URL("/b"), links)
 

@@ -12,6 +12,7 @@ from web_crawler.webcrawler import WebCrawler
 
 logger = logging.getLogger(__name__)
 
+
 class MTWebCrawler(WebCrawler):
     def __init__(self, max_depth: int = 3):
         self.max_depth = max_depth
@@ -41,7 +42,8 @@ class MTWebCrawler(WebCrawler):
             r.raise_for_status()
             return r.content
         except HTTPError as e:
-            # TODO - we can do much more sophisticated error handling here, e.g. 503s should be retried
+            # TODO - we can do much more sophisticated error
+            # handling here, e.g. 503s should be retried
             logger.warning(f"Get {url} failed. Exception: {e}")
             return ""
 
@@ -102,7 +104,7 @@ class MTWebCrawler(WebCrawler):
         output += "\n"
         print(output)
 
-    def _crawl(self, url:URL, depth: int) -> None:
+    def _crawl(self, url: URL, depth: int) -> None:
         """
         Iterates the crawling, finding all links from `url` and
         adds uncrawled links to the queue for further crawling
@@ -134,7 +136,6 @@ class MTWebCrawler(WebCrawler):
         while True:
             url, depth = self.q.get(block=True)
             self._crawl(url, depth)
-
 
     def crawl(self, url: URL, n_threads: int | None = None) -> None:
         """
