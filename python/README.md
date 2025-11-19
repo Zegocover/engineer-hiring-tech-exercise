@@ -143,8 +143,8 @@ docker run -e URL=https://www.dogstrust.org.uk/ -e DEPTH=1 webcrawler
 order to crawl effectively. This is done in the URL class with urllib.
 * URLs can be to specific locations within a page using the fragment pattern e.g. `http://a.com/link.html#about`. The fragment component is not of use and is discarded within the URL class.
 * URLs can have optional trailing slashes which point to the same resource, e.g. `/products/` and `/products`. This is handled within the URL class.
-* Some URLs are to none web resources e.g. `mailto:`
-* Some URLs are to javascript functions e.g. `<a href="javascript:doSomething();">`
+* Some URLs are to none web resources e.g. `mailto:`. This is handled in the URL class.
+* Some URLs are to javascript functions e.g. `<a href="javascript:doSomething();">` This is handled in the URL class.
 * URLs can contain query parameters, e.g. `year=2025`. I have interpreted the same page with different query parameters to represent distinct pages.
 
 ### Subdomains

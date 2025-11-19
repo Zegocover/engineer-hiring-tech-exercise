@@ -74,7 +74,10 @@ class STWebCrawler(WebCrawler):
         links = self.get_links(content)
 
         links = [link.make_absolute(url) for link in links]
-        links = [link for link in links if link.get_domain() == self.domain]
+        links = [
+            link for link in links
+            if link.is_http() and link.get_domain() == self.domain
+        ]
 
         # Drop trivial links back to self
         if url in links:

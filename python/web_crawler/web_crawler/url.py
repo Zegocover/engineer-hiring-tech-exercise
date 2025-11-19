@@ -82,3 +82,6 @@ class URL:
 
         """
         return URL(urllib.parse.urljoin(parent_url.url_string, self.url_string))
+
+    def is_http(self):
+        return urllib.parse.urlparse(self.url_string).scheme in ("http", "https")
