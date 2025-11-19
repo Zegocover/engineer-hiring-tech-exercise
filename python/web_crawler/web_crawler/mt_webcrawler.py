@@ -23,6 +23,7 @@ class MTWebCrawler(WebCrawler):
         self.visited_links = {}
 
     def _set_domain(self, url: URL) -> None:
+        """Sets the domain of the crawler to stay within"""
         self.domain = url.get_domain()
 
     def get_data(self, url: URL) -> str:
@@ -46,7 +47,13 @@ class MTWebCrawler(WebCrawler):
 
     def get_links(self, page_content: str) -> List[str]:
         """
-        Uses BeautifulSoup to find all hyperlinks tagged as <a> with a href.
+        Collects all links from `page_content`
+
+        Args:
+            page_content: string of HTML content of page
+
+        Returns:
+            list of URL objects
         """
         soup = BeautifulSoup(page_content, "html.parser")
         links = soup.find_all("a")
@@ -55,6 +62,16 @@ class MTWebCrawler(WebCrawler):
         return links
 
     def get_all_valid_links(self, url: URL) -> List[URL]:
+        """
+        Collects all valid links from `url`. Valid means non-trivial links
+        within the same domain. It will also force all URLs to be absolute.
+
+        Args:
+            url: URL of the page to get links from
+
+        Returns:
+            list of distinct URL objects
+        """
         content = self.get_data(url)
         links = self.get_links(content)
         links = [URL(link) for link in links]
@@ -86,6 +103,17 @@ class MTWebCrawler(WebCrawler):
         print(output)
 
     def _crawl(self, url:URL, depth: int) -> None:
+        """
+        Iterates the crawling, finding all links from `url` and
+        adds uncrawled links to the queue for further crawling
+
+        Args:
+            url: URL to be crawled
+            current_depth: number of links followed from initial URL
+
+        Returns:
+            None
+        """
         # Update the map of visited links
         self.visited_links[url] = depth
 
@@ -101,13 +129,22 @@ class MTWebCrawler(WebCrawler):
                 if link not in self.visited_links.keys():
                     self.q.put((link, depth + 1))
 
-    def _work_queue(self):
+    def _work_queue(self) -> None:
+        """Gets the next item from the queue and crawls it"""
         while True:
             url, depth = self.q.get(block=True)
             self._crawl(url, depth)
 
 
     def crawl(self, url: URL, n_threads: int | None = None) -> None:
+        """
+        Initiates a crawling of `url`
+        Args:
+            url: URL to be crawled as either a URL object or a string
+
+        Returns:
+            None
+        """
         if n_threads is None:
             n_threads = multiprocessing.cpu_count()
 

@@ -19,7 +19,8 @@ class STWebCrawler(WebCrawler):
         # we have visited and their depth (dict values)
         self.visited_links = {}
 
-    def _set_domain(self, url: URL):
+    def _set_domain(self, url: URL) -> None:
+        """Sets the domain of the crawler to stay within"""
         self.domain = url.get_domain()
 
     def get_data(self, url: URL) -> str:
