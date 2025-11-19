@@ -1,3 +1,9 @@
+"""
+This is a multithreaded version of the crawler. It's not tested
+ and a termination issue is mentioned in the crawl() function.
+
+The single-threaded version is available in st_webcrawler.py
+"""
 import logging
 import multiprocessing
 from queue import Queue
