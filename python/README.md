@@ -180,7 +180,7 @@ order to crawl effectively. This is done in the URL class with urllib.
 # Tests
 * Code is unit tested in python/web_crawler/tests
 * Integration tests also exist in this
-* These can be run with `make test` or `pytest web_crawler/tests'
+* These can be run with `make test` or `pytest web_crawler/tests`
 
 # Rejected approaches
 ### Graph approach
