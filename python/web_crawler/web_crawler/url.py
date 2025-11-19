@@ -76,7 +76,7 @@ class URL:
          -> 'https://a.com/page.html'
 
         Args:
-            domain ():
+            parent_url: the URL from which the relative link came
 
         Returns:
 
