@@ -1,11 +1,10 @@
 import unittest
 from http.client import HTTPException
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
 from requests import HTTPError
-
+from web_crawler.st_webcrawler import WebCrawler
 from web_crawler.url import URL
-from web_crawler.webcrawler import WebCrawler
 
 
 class TestWebCrawlerGetData(unittest.TestCase):
@@ -124,7 +123,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         def fake_get_all_valid_links(url):
             return url_graph.get(url, [])
 
-        with patch.object(WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links):
+        with patch.object(
+            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+        ):
             with patch.object(WebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 
@@ -159,7 +160,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         def fake_get_all_valid_links(url):
             return url_graph.get(url, [])
 
-        with patch.object(WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links):
+        with patch.object(
+            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+        ):
             with patch.object(WebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 
@@ -175,14 +178,16 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         self.assertEqual(1, wc.visited_links[URL("https://example.com/a")])
         self.assertEqual(1, wc.visited_links[URL("https://example.com/b")])
 
-
     def test_crawl_with_str_url(self):
         wc = WebCrawler(max_depth=2)
         start_url = "https://example.com/start"
 
         # Map of URL -> list of child URLs (all same domain)
         url_graph = {
-            URL(start_url): [URL("https://example.com/a"), URL("https://example.com/b")],
+            URL(start_url): [
+                URL("https://example.com/a"),
+                URL("https://example.com/b"),
+            ],
             URL("https://example.com/a"): [URL("https://example.com/c")],
             URL("https://example.com/b"): [],
             URL("https://example.com/c"): [],
@@ -191,7 +196,9 @@ class TestWebCrawlerCrawlLogic(unittest.TestCase):
         def fake_get_all_valid_links(url):
             return url_graph.get(url, [])
 
-        with patch.object(WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links):
+        with patch.object(
+            WebCrawler, "get_all_valid_links", side_effect=fake_get_all_valid_links
+        ):
             with patch.object(WebCrawler, "print_url"):  # suppress printing
                 wc.crawl(start_url)
 

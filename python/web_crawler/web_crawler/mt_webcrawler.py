@@ -7,9 +7,10 @@ import requests
 from bs4 import BeautifulSoup
 from requests import HTTPError
 from web_crawler.url import URL
+from web_crawler.webcrawler import WebCrawler
 
 
-class MTWebCrawler:
+class MTWebCrawler(WebCrawler):
     def __init__(self, max_depth: int = 3):
         self.max_depth = max_depth
         self.domain = None
@@ -31,22 +32,7 @@ class MTWebCrawler:
             print(f"WARNING: {e}")
             return ""
 
-        with open(
-            f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "wb"
-        ) as f:
-            f.write(r.content)
-
         return r.content
-
-    def get_data_local(self, url: URL):
-        try:
-            with open(
-                f"/tmp/local_data/{url.url_string.replace('/', '.')}.html", "rb"
-            ) as f:
-                return f.read()
-
-        except IOError:
-            return self.get_data(url)
 
     def get_links(self, page_content: str):
         """
@@ -75,9 +61,7 @@ class MTWebCrawler:
         while True:
             url, depth = self.q.get(block=True)
 
-            self.visited_links[
-                url
-            ] = depth  # TODO check this is maintained across threads?
+            self.visited_links[url] = depth
 
             links = self.get_all_valid_links(url)
             output = str(f"{url} contains {len(links)} links")

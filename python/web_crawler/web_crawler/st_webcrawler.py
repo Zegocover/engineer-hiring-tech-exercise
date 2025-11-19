@@ -4,9 +4,10 @@ import requests
 from bs4 import BeautifulSoup
 from requests import HTTPError
 from web_crawler.url import URL
+from web_crawler.webcrawler import WebCrawler
 
 
-class WebCrawler:
+class STWebCrawler(WebCrawler):
     def __init__(self, max_depth: int = 3):
         self.max_depth = max_depth
         self.domain = None

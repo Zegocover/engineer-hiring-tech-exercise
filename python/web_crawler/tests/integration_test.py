@@ -3,8 +3,8 @@ from io import StringIO
 from unittest.mock import patch
 
 from web_crawler.mt_webcrawler import MTWebCrawler
+from web_crawler.st_webcrawler import WebCrawler
 from web_crawler.url import URL
-from web_crawler.webcrawler import WebCrawler
 
 
 class TestIntegration(unittest.TestCase):
@@ -75,10 +75,10 @@ class TestIntegration(unittest.TestCase):
     def mock_get_data(self, url: URL):
         """Mock implementation that returns predefined HTML pages"""
         page_content = self.mock_pages.get(url.url_string, "<html></html>")
-        return page_content.encode('utf-8')
+        return page_content.encode("utf-8")
 
-    @patch.object(WebCrawler, 'get_data')
-    @patch('sys.stdout', new_callable=StringIO)
+    @patch.object(WebCrawler, "get_data")
+    @patch("sys.stdout", new_callable=StringIO)
     def test_basic_crawl(self, mock_stdout, mock_get_data):
         """Test basic crawling from home page"""
         mock_get_data.side_effect = self.mock_get_data
@@ -113,14 +113,14 @@ class TestIntegration(unittest.TestCase):
         # Check that external links are NOT in the output
         self.assertNotIn("external.com", output)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_url_normalization(self, mock_get_data):
         """Test that URL normalization works during crawl"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=1)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com/about"))
 
         # Fragment links should not create separate URLs
@@ -131,14 +131,14 @@ class TestIntegration(unittest.TestCase):
         # Should have /about as visited (not /about#team)
         self.assertIn(URL("https://example.com/about"), wc.visited_links)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_depth_limiting(self, mock_get_data):
         """Test that max_depth is respected"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=1)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com"))
 
         # At depth 1, should not reach item pages (depth 2)
@@ -148,14 +148,14 @@ class TestIntegration(unittest.TestCase):
         # But should reach products page
         self.assertIn(URL("https://example.com/products"), wc.visited_links)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_deeper_crawl(self, mock_get_data):
         """Test crawling with depth 2 reaches nested pages"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=2)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com"))
 
         # Should reach nested product pages
@@ -166,7 +166,7 @@ class TestIntegration(unittest.TestCase):
         self.assertEqual(1, wc.visited_links[URL("https://example.com/products")])
         self.assertEqual(2, wc.visited_links[URL("https://example.com/products/item1")])
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_no_duplicate_visits(self, mock_get_data):
         """Test that pages are only visited once"""
         call_count = {}
@@ -179,21 +179,21 @@ class TestIntegration(unittest.TestCase):
 
         wc = WebCrawler(max_depth=2)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com"))
 
         # Each page should be fetched exactly once
         for url, count in call_count.items():
             self.assertEqual(1, count, f"{url} was fetched {count} times")
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_relative_to_absolute_conversion(self, mock_get_data):
         """Test that relative URLs are converted to absolute"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=1)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com"))
 
         # All visited URLs should be absolute
@@ -201,28 +201,28 @@ class TestIntegration(unittest.TestCase):
             self.assertTrue(url.url_string.startswith("https://"))
             self.assertIn("example.com", url.url_string)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_string_url_input(self, mock_get_data):
         """Test that crawler accepts string URLs"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=1)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl("https://example.com")  # String instead of URL object
 
         # Should still work correctly
         self.assertEqual("https://example.com", wc.domain)
         self.assertIn(URL("https://example.com"), wc.visited_links)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_cyclic_links_handled(self, mock_get_data):
         """Test that cyclic links don't cause infinite loops"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=3)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             # Products and items have cycles
             wc.crawl(URL("https://example.com/products"))
 
@@ -234,14 +234,14 @@ class TestIntegration(unittest.TestCase):
         # Should have reasonable number of visits (no infinite loop)
         self.assertLessEqual(len(wc.visited_links), 10)
 
-    @patch.object(WebCrawler, 'get_data')
+    @patch.object(WebCrawler, "get_data")
     def test_domain_filtering(self, mock_get_data):
         """Test that only same-domain links are followed"""
         mock_get_data.side_effect = self.mock_get_data
 
         wc = WebCrawler(max_depth=2)
 
-        with patch.object(WebCrawler, 'print_url'):
+        with patch.object(WebCrawler, "print_url"):
             wc.crawl(URL("https://example.com"))
 
         # All visited URLs should be from example.com
