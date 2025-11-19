@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import requests
@@ -5,6 +6,8 @@ from bs4 import BeautifulSoup
 from requests import HTTPError
 from web_crawler.url import URL
 from web_crawler.webcrawler import WebCrawler
+
+logger = logging.getLogger(__name__)
 
 
 class STWebCrawler(WebCrawler):
@@ -19,7 +22,6 @@ class STWebCrawler(WebCrawler):
     def _set_domain(self, url: URL):
         self.domain = url.get_domain()
 
-    # TODO retries
     def get_data(self, url: URL) -> str:
         """
         Makes a GET request to the specified URL and returns the content as a string
@@ -35,7 +37,8 @@ class STWebCrawler(WebCrawler):
             r.raise_for_status()
             return r.content
         except HTTPError as e:
-            print(f"WARNING: Get {url} failed. Exception: {e}")
+            # TODO - we can do much more sophisticated error handling here, e.g. 503s should be retried
+            logger.warning(f"Get {url} failed. Exception: {e}")
             return ""
 
     def get_links(self, page_content: str) -> List[URL]:

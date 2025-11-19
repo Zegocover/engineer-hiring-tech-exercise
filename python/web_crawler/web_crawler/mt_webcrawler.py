@@ -1,7 +1,8 @@
+import logging
 import multiprocessing
 from queue import Queue
 from threading import Thread
-from time import sleep
+from typing import List
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +10,7 @@ from requests import HTTPError
 from web_crawler.url import URL
 from web_crawler.webcrawler import WebCrawler
 
+logger = logging.getLogger(__name__)
 
 class MTWebCrawler(WebCrawler):
     def __init__(self, max_depth: int = 3):
@@ -20,21 +22,29 @@ class MTWebCrawler(WebCrawler):
         # we have visited and their depth (dict values)
         self.visited_links = {}
 
-    def _set_domain(self, url: URL):
+    def _set_domain(self, url: URL) -> None:
         self.domain = url.get_domain()
 
-    # TODO retries
-    def get_data(self, url: URL):
+    def get_data(self, url: URL) -> str:
+        """
+        Makes a GET request to the specified URL and returns the content as a string
+
+        Args:
+            url: The URL to make a GET request to
+
+        Returns:
+            content of the GET request
+        """
         try:
             r = requests.get(url.url_string)
             r.raise_for_status()
+            return r.content
         except HTTPError as e:
-            print(f"WARNING: {e}")
+            # TODO - we can do much more sophisticated error handling here, e.g. 503s should be retried
+            logger.warning(f"Get {url} failed. Exception: {e}")
             return ""
 
-        return r.content
-
-    def get_links(self, page_content: str):
+    def get_links(self, page_content: str) -> List[str]:
         """
         Uses BeautifulSoup to find all hyperlinks tagged as <a> with a href.
         """
@@ -44,8 +54,8 @@ class MTWebCrawler(WebCrawler):
 
         return links
 
-    def get_all_valid_links(self, url: URL):
-        content = self.get_data_local(url)
+    def get_all_valid_links(self, url: URL) -> List[URL]:
+        content = self.get_data(url)
         links = self.get_links(content)
         links = [URL(link) for link in links]
         links = [link.make_absolute(url) for link in links]
@@ -57,25 +67,47 @@ class MTWebCrawler(WebCrawler):
 
         return list(set(links))
 
-    def work_queue(self, q: Queue):
+    @staticmethod
+    def print_url(url: URL, links: List[URL]) -> None:
+        """
+        Pretty prints the URL and all its links
+        Args:
+            url: URL to be printed
+            links: list of links
+
+        Returns:
+            None
+        """
+        output = str(f"{url} contains {len(links)} links")
+        for link in links:
+            output += f"\n* {link}"
+
+        output += "\n"
+        print(output)
+
+    def _crawl(self, url:URL, depth: int) -> None:
+        # Update the map of visited links
+        self.visited_links[url] = depth
+
+        # get all links from this URL
+        links = self.get_all_valid_links(url)
+
+        # print output
+        self.print_url(url, links)
+
+        # If we haven't reached the max depth, queue the links for crawling
+        if depth < self.max_depth:
+            for link in links:
+                if link not in self.visited_links.keys():
+                    self.q.put((link, depth + 1))
+
+    def _work_queue(self):
         while True:
             url, depth = self.q.get(block=True)
+            self._crawl(url, depth)
 
-            self.visited_links[url] = depth
 
-            links = self.get_all_valid_links(url)
-            output = str(f"{url} contains {len(links)} links")
-            for link in links:
-                output += f"\n* {link}"
-
-            output += "\n"
-            print(output)
-            if depth < self.max_depth:
-                for link in links:
-                    if link not in self.visited_links.keys():
-                        self.q.put((link, depth + 1))
-
-    def crawl(self, url: URL, n_threads: int | None = None):
+    def crawl(self, url: URL, n_threads: int | None = None) -> None:
         if n_threads is None:
             n_threads = multiprocessing.cpu_count()
 
@@ -84,13 +116,10 @@ class MTWebCrawler(WebCrawler):
 
         threads = []
         for i in range(0, n_threads):
-            thread = Thread(target=self.work_queue, args=(self.q,))
+            thread = Thread(target=self._work_queue)
             thread.start()
             threads.append(thread)
 
-        sleep(20)
-
-        # TODO
-        # As this code stands, the processes won't finish. We need a way to
+        # TODO - As this code stands, the processes won't terminate. We need a way to
         # detect every worker is finished before allowing any to finish.
         # We can't rely on the queue being empty because another worker may add to it.
