@@ -7,7 +7,7 @@ from web_crawler.st_webcrawler import STWebCrawler
 from web_crawler.url import URL
 
 
-class TestWebCrawlerGetData(unittest.TestCase):
+class TestSTWebCrawlerGetData(unittest.TestCase):
     @patch("web_crawler.st_webcrawler.requests.get")
     def test_get_data_success(self, mock_get):
         # Arrange
@@ -42,7 +42,7 @@ class TestWebCrawlerGetData(unittest.TestCase):
         self.assertEqual("", result)
 
 
-class TestWebCrawlerGetLinks(unittest.TestCase):
+class TestSTWebCrawlerGetLinks(unittest.TestCase):
     def test_get_links_parses_anchor_hrefs_to_url_objects(self):
         wc = STWebCrawler()
         html = """
@@ -63,7 +63,7 @@ class TestWebCrawlerGetLinks(unittest.TestCase):
         self.assertIn(URL("/b"), links)
 
 
-class TestWebCrawlerGetAllValidLinks(unittest.TestCase):
+class TestSTWebCrawlerGetAllValidLinks(unittest.TestCase):
     @patch.object(STWebCrawler, "get_links")
     def test_get_all_valid_links_filters(self, mock_get_links):
         wc = STWebCrawler()
@@ -90,7 +90,7 @@ class TestWebCrawlerGetAllValidLinks(unittest.TestCase):
         self.assertSetEqual(expected, set([u.url_string for u in result]))
 
 
-class TestWebCrawlerPrintUrl(unittest.TestCase):
+class TestSTWebCrawlerPrintUrl(unittest.TestCase):
     def test_print_url_outputs_expected_format(self):
         wc = STWebCrawler()
         url = URL("https://example.com/start")
@@ -107,7 +107,7 @@ class TestWebCrawlerPrintUrl(unittest.TestCase):
         self.assertIn("* https://example.com/b", output)
 
 
-class TestWebCrawlerCrawlLogic(unittest.TestCase):
+class TestSTWebCrawlerCrawlLogic(unittest.TestCase):
     def test_crawl(self):
         wc = STWebCrawler(max_depth=2)
         start_url = URL("https://example.com/start")
