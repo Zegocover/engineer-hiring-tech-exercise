@@ -1,3 +1,5 @@
+# python-developer-test
+
 # Zego
 
 ## About Us
@@ -14,10 +16,10 @@ Zego is thoroughly committed to our values, which are the essence of our culture
 They are the foundation of our company and the guiding principles for our employees. Our values are:
 
 <table>
-    <tr><td><img src="doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
+    <tr><td><img src="./doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
+    <tr><td><img src="./doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
+    <tr><td><img src="./doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
+    <tr><td><img src="./doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
 </table>
 
 ## The Engineering Team
@@ -40,11 +42,55 @@ team of engineers that thrive on challenge and innovation.
 - **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
   scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
 
-## The tests
+## Who should be taking this test?
 
-This repository contains the tests for the following roles:
+This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
+Ideally you have hands-on experience developing Python solutions using Object Oriented Programming methodologies in a commercial setting. You have good problem-solving abilities, a passion for writing clean and generally produce efficient, maintainable scaleable code.
 
-- [Python Developer](python/README.md)
-- [Front-end Developer](front-end/README.md)
+## The test 🧪
 
-Please visit the appropriate folder for the test you are doing and follow the instructions in the README file.
+Create a Python app that can be run from the command line that will accept a base URL to crawl the site.
+For each page it finds, the script will print the URL of the page and all the URLs it finds on that page.
+The crawler will only process that single domain and not crawl URLs pointing to other domains or subdomains.
+Please employ patterns that will allow your crawler to run as quickly as possible, making full use any
+patterns that might boost the speed of the task, whilst not sacrificing accuracy and compute resources.
+Do not use tools like Scrapy or Playwright. You may use libraries for other purposes such as making HTTP requests, parsing HTML and other similar tasks.
+
+## The objective
+
+This exercise is intended to allow you to demonstrate how you design software and write good quality code.
+We will look at how you have structured your code and how you test it. We want to understand how you have gone about
+solving this problem, what tools you used to become familiar with the subject matter and what tools you used to
+produce the code and verify your work. Please include detailed information about your IDE, the use of any
+interactive AI (such as Copilot) as well as any other AI tools that form part of your workflow.
+
+You might also consider how you would extend your code to handle more complex scenarios, such a crawling
+multiple domains at once, thinking about how a command line interface might not be best suited for this purpose
+and what alternatives might be more suitable. Also, feel free to set the repo up as you would a production project.
+
+Extend this README to include a detailed discussion about your design decisions, the options you considered and
+the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
+
+# Instructions
+
+1. Create a repo.
+2. Tackle the test.
+3. Push the code back.
+4. Add us (@2014klee, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
+5. Notify your TA so they can chase the reviewers.
+
+---
+
+# Development notes
+
+I used Visual Studio Code with the GitHub Copilot Chat extension, using the GPT-5 mini model.
+
+First I designed and planned out the web crawler features using the Plan agent on Copilot. I had done some initial research on recommended Python libraries and web crawler best practices myself, but since the Plan agent suggestions aligned with my findings, I decided to carry on iterating on the plan with its help. 
+
+The Plan agent suggested a number of ways to configure various network and connection settings, but I decided most of them were out of scope for this exercise. Once the plan was finalised, I switched to the Agent agent and had it turn the plan into code. I inspected the code, and either asked the Agent or made small changes myself along the way.
+
+The Agent suggested adding a number of tests, but I noticed that the tests it suggested seemed random and did not give me confidence on coverage, so I decided to come up with a basic test plan myself. I went through the requirements of the coding test, the features I ended up implementing for the web crawler, and considered implementation details.
+
+I then asked the Agent to implement the tests, again reviewing, iterating and making changes as I went along. Even though I normally try to avoid having unit tests for private functions, I opted for them in some cases to avoid more expensive tests and to better document certain behaviours. I also opted having them all in one folder, instead of separating them into separate unit and integration folders, due to the relatively small size of the project and for readability. 
+
+For the implemented design details and design summary, see the [Design summary](web_crawler/README.md#design-summary-short) section in `web_crawler/README.md`.
