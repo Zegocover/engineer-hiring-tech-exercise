@@ -2,6 +2,130 @@
 
 # Zego
 
+## Solution
+
+### Approach
+
+* The task of crawling a site start from a base URL to find all URLs is as a graph traversal problem.
+  URLs are nodes, links to other URLs are edges and the root node is the base URL.
+* The two most popular graph traversal algorithms are BFS and DFS. My approach uses a parallelised BFS like algorithm.
+* The main optimisation I used was visiting the URLs of a page in parallel.
+* In ordinary BFS, neighbors are visited sequentially.
+  In my approach, once a URL is observed it is placed on a queue.
+  The queue is processed in parallel by workers from a pre-defined pool.
+  This is a pub/sub pattern, where the workers are both publishers and consumers.
+  Once the queue is empty, the site crawl has complete.
+
+### Development Workflow
+
+**Dev Tools:**
+
+* PyCharm - proud user of PyCharm, I don't use any AI inside the IDE
+* Google - I use this for researching problems
+* ChatGPT - I use this for ideation, researching problems and writing boilerplate code to use as a starting point. It is especially good for unit tests.
+
+**Timeline:**
+
+* The first thing I did was implement a very simple sequential BFS in a single Python file.
+  I had this working relatively quickly, the idea being to use this as a starting point and iteratively improve the solution.
+* I then separated out traversing and crawling into two separate classes.
+  This would make implementing optimising the traverse easier.
+  I left this implementation in the `BFSTraverse` class.
+* The vast majority of my time went to implementing `PooledTraverse` class:
+   1. Researching the concurrency framework and pattern (discussed below)
+   2. Implementing the class to not fail on edge cases, not deadlock and to terminate if any worker received an exception was challenging.
+* Finally, I added robustness and refactored.
+
+### Design Decisions
+
+1. Parallelisation framework: `ThreadPoolExecutor/ProcessPoolExecutor` vs `asyncio/aiohttp`.
+
+   * Visiting URLs in parallel could be implemented with separate threads/processes or as tasks in `asyncio`.
+   * Most of the work done is IO (querying web pages).
+   * On the other hand, if the task was to train a model per web page, most of the work would be computation.
+   * The overhead of running a single thread is much higher than a single async task.
+   * As such, you could scale up the amount of concurrent tasks much higher with `asyncio`.
+
+2. Parallelisation pattern: worker pool vs unbounded amount of async Tasks.
+    * Once the decision was made on the parallelisation framework, the next decision was the parallelisation pattern.
+    * The amount of concurrent workers could either be bounded (worker pool) or unbounded (each URL is an async task).
+    * If a site had many pages with thousands of URLs, the amount of async tasks could grow so large, the script would crash.
+    * As such, a worker pool is a better option as the bound provides robustness.
+    
+3. Object orientated design: splitting out graph traversal and the crawler
+    * Separate concerns: fetching webpages, parsing, extracting links shouldn't be in the same class as traversing a graph. 
+    * Easier to test
+    * Easier to reason about code
+
+### Improvements
+
+**Fundamentals:**
+
+* The `fetch` method in my crawler catches `Exception`, this is a bad practise. If I had more time I would have refined this.
+* I stored the final result in `_sitemap` of the crawler. A huge amount of overlapping information is stored in `_visited` of `PooledTraverse`.
+  To optimise on memory it might have been better to store this all inside `PooledTraverse`.
+* Add robustness: I would have written more unit tests in general. The crawler's methods likely have some edge cases I missed.
+* Added pre-commit, test coverage reports.
+* Added more comments throughout the code.
+
+**Extensions:**
+
+* My implementation covers the absolute basics for such a crawler. It is missing things such as retries, delays, timeout configuration etc.
+* Implementing multiple URLs could be done by extending the traverse to start with many roots.
+
+### Project Structure
+
+```
+.
+├── crawler - source code
+│   ├── crawler.py - holds a class for the crawler
+│   ├── main.py - cli entrypoint
+│   ├── traverse.py - holds two generic classes used for graph traversal
+│   └── util.py - reusable utility functions
+├── tests - PyTests
+├── poetry.lock - Poetry dependency management
+├── pyproject.toml - Poetry dependency management
+└── README.md
+```
+
+### Requirements
+
+- Python 3.13
+- Poetry 1.8
+
+### Running
+
+Install Dependencies:
+
+```bash
+poetry install --sync
+``` 
+
+Run Tests:
+
+```bash
+pytest
+``` 
+
+Run Crawler:
+
+```bash
+python -m crawler.main --help
+> Usage: python -m crawler.main [OPTIONS]
+> 
+> Options:
+>   --url TEXT                      URL to crawl.
+>   --workers INTEGER               Number of workers to use.
+>   --log-level [critical|error|warning|info|debug]
+>                                   Set log level.
+>   --help                          Show this message and exit.
+
+python -m crawler.main --url https://www.zego.com --workers 10
+
+# Alternatively:
+PYTHONPATH="${PYTHONPATH}:$PWD/crawler" python -m crawler.main --url https://www.zego.com --workers 10
+``` 
+
 ## About Us
 
 At Zego, we understand that traditional motor insurance holds good drivers back.
