@@ -14,24 +14,34 @@ class Crawler:
         self._fetcher = fetcher
 
 
-    async def crawl(self, base_url: str) -> AsyncGenerator[Set[str], None]:
-        queue: asyncio.Queue[str] = asyncio.Queue()
+    async def crawl(self, base_url: str, max_depth: int = 1) -> AsyncGenerator[Set[str], None]:
+        """Crawl starting at `base_url` up to `max_depth` levels.
+
+        Depth semantics:
+        - depth 0: the base_url itself
+        - depth 1: pages linked directly from base_url
+        If max_depth is 0, the crawler will only include the base_url and not fetch any links.
+        """
+        # queue holds tuples of (url, depth)
+        queue: asyncio.Queue[tuple[str, int]] = asyncio.Queue()
         seen_urls: Set[str] = {base_url}
 
-        await queue.put(base_url)
+        await queue.put((base_url, 0))
         async with aiohttp.ClientSession() as session:
             while not queue.empty():
-                url = await queue.get()
+                url, depth = await queue.get()
                 content = await self._fetcher.fetch(session, url)
                 if content is None:
                     continue
-                urls = get_urls_from_html(content, base_url)
-                unique_urls = [url for url in urls if url not in seen_urls]
-                valid_urls = [url for url in unique_urls if self.is_valid(url, base_url)]
-                for url in valid_urls:
-                    await queue.put(url)
-                seen_urls.update(valid_urls)
 
+                # Only extract children when we haven't reached max_depth yet
+                if depth < max_depth:
+                    urls = get_urls_from_html(content, base_url)
+                    unique_urls = [u for u in urls if u not in seen_urls]
+                    valid_urls = [u for u in unique_urls if self.is_valid(u, base_url)]
+                    for u in valid_urls:
+                        await queue.put((u, depth + 1))
+                    seen_urls.update(valid_urls)
 
         yield seen_urls
 
