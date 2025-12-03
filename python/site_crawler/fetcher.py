@@ -7,14 +7,14 @@ from aiohttp import ClientSession
 
 
 class Fetcher:
-    async def fetch(self, session: ClientSession, url: str) -> Optional[Tuple[str, str]]:
+    async def fetch(self, session: ClientSession, url: str) -> Optional[str]:
         try:
             async with session.get(url, allow_redirects=True) as resp:
                 ctype = resp.headers.get("Content-Type", "")
                 if resp.status != 200 or "html" not in ctype:
                     return None
                 text = await resp.text(errors="ignore")
-                return (str(resp.url), text)
+                return text
         except Exception:
             logging.exception(f"Error fetching {url}")
             return None
