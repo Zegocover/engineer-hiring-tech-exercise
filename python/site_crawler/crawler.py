@@ -1,4 +1,7 @@
+import asyncio
+import logging
 from typing import AsyncGenerator, Set
+from urllib.parse import urlparse
 
 import aiohttp
 
@@ -7,23 +10,44 @@ from site_crawler.fetcher import Fetcher
 
 
 class Crawler:
-    def __init__(self, base_url: str, concurrency: int = 10, timeout: int = 10, max_pages: int = 100, fetcher = Fetcher()) -> None:
-        self._base_url = base_url
+    def __init__(self, fetcher = Fetcher()) -> None:
         self._fetcher = fetcher
-        self.seen_urls: Set[str] = set()
 
-    async def crawl(self) -> AsyncGenerator[Set[str], None]:
+
+    async def crawl(self, base_url: str) -> AsyncGenerator[Set[str], None]:
+        queue: asyncio.Queue[str] = asyncio.Queue()
+        seen_urls: Set[str] = {base_url}
+
+        await queue.put(base_url)
         async with aiohttp.ClientSession() as session:
-            content = await self._fetcher.fetch(session, url=self._base_url)
+            while not queue.empty():
+                url = await queue.get()
+                content = await self._fetcher.fetch(session, url)
+                if content is None:
+                    continue
+                urls = get_urls_from_html(content, base_url)
+                unique_urls = [url for url in urls if url not in seen_urls]
+                valid_urls = [url for url in unique_urls if self.is_valid(url, base_url)]
+                for url in valid_urls:
+                    await queue.put(url)
+                seen_urls.update(valid_urls)
 
-            urls = get_urls_from_html(content, self._base_url)
-            unique_urls = [url for url in urls if url not in self.seen_urls]
-            valid_urls = [url for url in unique_urls if self.is_valid(url)]
 
-            print(valid_urls)
+        yield seen_urls
 
-        yield {self._base_url}
+    def is_valid(self, url: str, base_url: str) -> bool:
+        """Return True if `url` belongs to the same exact hostname as `base_url`.
 
-    def is_valid(self, url: str) -> bool:
-        # Placeholder for URL validation logic
-        return True
+        Subdomains are not allowed (e.g. `sub.example.com` != `example.com`).
+        Treats different TLDs as different (e.g. `example.com` != `example.co.uk`).
+        Comparison is case-insensitive.
+        """
+        try:
+            p = urlparse(url)
+            b = urlparse(base_url)
+            if not p.hostname or not b.hostname:
+                return False
+            return p.hostname.lower() == b.hostname.lower()
+        except Exception:
+            logging.exception("Error validating URL")
+            return False

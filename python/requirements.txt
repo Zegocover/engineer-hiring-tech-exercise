@@ -1,3 +1,4 @@
 aiohttp>=3.8
 lxml>=4.9
+beautifulsoup4
 
