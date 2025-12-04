@@ -71,6 +71,108 @@ and what alternatives might be more suitable. Also, feel free to set the repo up
 Extend this README to include a detailed discussion about your design decisions, the options you considered and
 the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
 
+## Design decisions and trade-offs
+
+This section describes the main design choices made while implementing the crawler, the alternatives considered,
+and the trade-offs that influenced the final implementation.
+
+### Architecture overview
+
+- Components:
+  - `main.py` — CLI entrypoint, parses arguments and invokes the crawler.
+  - `site_crawler.fetcher.Fetcher` — thin wrapper over the HTTP client; fetches pages and returns HTML or None.
+  - `site_crawler.extractor.get_urls_from_html` — parses HTML and returns a set of normalized absolute URLs.
+  - `site_crawler.crawler.Crawler` — coordinates fetching, link extraction, de-duplication, depth control and hostname validation.
+  - `tests/` — pytest test-suite that exercises parsing, fetching (using fakes) and crawler logic.
+
+This separation keeps responsibilities small and testable: HTTP details are isolated in `Fetcher`, HTML parsing in `extractor`, and crawling logic in `Crawler`.
+
+### Concurrency model
+
+- The crawler uses asyncio and an in-memory FIFO queue to schedule URLs. The implementation is intentionally simple:
+  - The current implementation performs fetches sequentially inside an `async with aiohttp.ClientSession()` loop. This keeps the example straightforward and easy to reason about.
+  - In a production scenario we would run multiple fetches concurrently (e.g., use a pool of worker tasks reading from the queue) to maximize throughput.
+
+### URL normalization and validation
+
+- Normalization: extracted URLs are resolved against a base URL, fragments are removed, queries are preserved, and the path is normalized to `/` if empty.
+
+- Hostname validation: the crawler enforces an exact hostname match with the `base_url` to avoid crossing subdomains. This is the simplest and safest policy for the exercise.
+  - Alternatives: allow the same registrable domain (e.g., `example.com` for `www.example.com`), or use the Public Suffix List to compare registrable domains. Those approaches are more user-friendly but more complex.
+
+### Depth control
+
+- The crawler supports a `max_depth` parameter: depth 0 returns only the base page; depth 1 includes direct links, etc. This provides a simple way to limit scope and resource usage.
+
+### Testing approach
+
+- Tests use pytest and are placed under `python/tests/`.
+  - `test_extractor.py` validates URL extraction and normalization.
+  - `test_fetcher.py` uses small fake async objects to simulate `aiohttp` responses without performing network I/O.
+  - `test_crawler.py` and `test_crawler_crawl.py` verify `is_valid` rules and crawling behavior using injected fake Fetcher implementations.
+
+- Trade-off: the tests prefer determinism and simplicity over full end-to-end networked tests. End-to-end tests could be added with a local HTTP server fixture.
+
+### Error handling and resilience
+
+- Fetcher gracefully handles exceptions and non-HTML responses by returning `None`, which the crawler skips.
+- The crawler maintains a `seen_urls` set to avoid cycles and duplicate work.
+
+### Observability and logging
+
+- The code logs parsing/fetch errors via `logging.exception()` so problems can be diagnosed during runs. For production, structured logging and metrics (request latencies, success/failure counts) would be added.
+
+## How to run (python3)
+
+From the `python/` directory, install dependencies and run the crawler:
+
+1. Create a virtualenv and install required packages:
+
+```bash
+pip install -r requirement.txt
+pip install -r requirement-dev.txt  # pytest, etc. (optional)
+```
+
+2. Run the crawler (example):
+
+```bash
+python3 main.py "https://example.com/" -d 1
+```
+
+3. Run tests with pytest:
+
+```bash
+python3 -m pytest -q tests
+```
+
+## Environment & tools
+
+- Editor: VS Code
+- Python: 3.9
+- Assisted: GitHub Copilot was used to help write some test cases and implement utility methods.
+
+
+## Trade-offs & future work
+
+- Concurrency: replace the sequential fetch loop with a pool of worker tasks to concurrently fetch pages from the queue.
+- Persistence: use a persistent queue (Redis) and checkpointing for long-running crawls.
+- Scalability: shard crawling work across multiple processes or machines.
+- Observability: add structured logs, metrics, and tracing.
+
+
+Distributed architecture (future)
+
+One natural evolution is to move the crawler to a distributed architecture for large-scale crawling. A simple design:
+
+- Publish crawl work to a Kafka topic where each message contains the URL, its depth, parent metadata and any crawl hints.
+- Multiple worker services (consumer groups) read messages from Kafka, fetch pages, extract links and publish discovered child URLs back to the topic (or to a separate topic for discovered links) with updated depth and metadata.
+- Keep persistent job state in a database (Postgres, Redis, etc.) so you can track progress, deduplicate work, resume failed jobs and report status to users. The DB holds canonical URL state, crawl attempts, timestamps and retry counters.
+
+Key operational considerations: partitioning (to distribute load), idempotency and deduplication (DB unique constraints or dedupe service), backpressure handling, retry policies and observability (metrics and traces). This design enables horizontal scaling, fault-tolerance and easier monitoring of long-running crawls.
+
+---
+
+
 # Instructions
 
 1. Create a repo.
