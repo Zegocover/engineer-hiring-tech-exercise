@@ -1,80 +1,123 @@
-# python-developer-test
+# Zego Python Developer Test: Web Crawler
 
-# Zego
+## Overview
 
-## About Us
+This repository contains a Python-based web crawler. The crawler is designed to start from a given base URL, discover and process pages strictly within the same domain (excluding subdomains or external sites), and print each crawled page's URL along with the list of internal links found on it.
 
-At Zego, we understand that traditional motor insurance holds good drivers back.
-It's too complicated, too expensive, and it doesn't reflect how well you actually drive.
-Since 2016, we have been on a mission to change that by offering the lowest priced insurance for good drivers.
+The implementation focuses on efficiency, maintainability, and scalability while adhering to the constraints: no use of heavy frameworks like Scrapy or Playwright, but leveraging standard libraries for HTTP requests (requests), HTML parsing (BeautifulSoup), and concurrency (concurrent.futures).
 
-From van drivers and gig economy workers to everyday car drivers, our customers are the driving force behind everything we do. We've sold tens of millions of policies and raised over $200 million in funding. And we’re only just getting started.
+Key features:
+- Command-line interface for easy execution.
+- Concurrent fetching to boost speed without overwhelming resources.
+- Robust URL normalization and domain filtering to ensure accuracy.
+- Politeness features like rate limiting and error handling.
+- Modular structure for testability and extensibility.
 
-## Our Values
+This solution was prioritizing a clean MVP first, followed by optimizations and testing.
 
-Zego is thoroughly committed to our values, which are the essence of our culture. Our values defined everything we do and how we do it.
-They are the foundation of our company and the guiding principles for our employees. Our values are:
+## Setup and Requirements
 
-<table>
-    <tr><td><img src="../doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="../doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="../doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="../doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
-</table>
+### Prerequisites
+- Python 3.8+
+- Conda environment
 
-## The Engineering Team
+### Installation
+1. Clone the repository:
+   ```
+   git clone <repo-url>
+   cd zego-crawler
+   ```
+2. Create and activate the Conda environment:
+   ```
+   conda env create -f environment.yml
+   conda activate zego-crawler
+   ```
 
-Zego puts technology first in its mission to define the future of the insurance industry.
-By focusing on our customers' needs we're building the flexible and sustainable insurance products
-and services that they deserve. And we do that by empowering a diverse, resourceful, and creative
-team of engineers that thrive on challenge and innovation.
+### Running the Crawler
+Run via the CLI:
+```
+python main.py <url> [--max-pages <int>] [--concurrency <int>] [--delay <float>]
+```
+- Example: `python main.py https://example.com --max-pages 100 --concurrency 10 --delay 1.0`
 
-### How We Work
+This will start crawling from the provided URL, printing each page and its internal links.
 
-- **Collaboration & Knowledge Sharing** - Engineers at Zego work closely with cross-functional teams to gather requirements,
-  deliver well-structured solutions, and contribute to code reviews to ensure high-quality output.
-- **Problem Solving & Innovation** - We encourage analytical thinking and a proactive approach to tackling complex
-  problems. Engineers are expected to contribute to discussions around optimization, scalability, and performance.
-- **Continuous Learning & Growth** - At Zego, we provide engineers with abundant opportunities to learn, experiment and
-  advance. We positively encourage the use of AI in our solutions as well as harnessing AI-powered tools to automate
-  workflows, boost productivity and accelerate innovation. You'll have our full support to refine your skills, stay
-  ahead of best practices and explore the latest technologies that drive our products and services forward.
-- **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
-  scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
+### Testing
+Run unit tests:
+```
+pytest -v
+```
+Tests cover critical components: URL normalization, domain checking, link resolution, parsing, and fetching (with mocks).
 
-## Who should be taking this test?
+## Design Decisions
 
-This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
-Ideally you have hands-on experience developing Python solutions using Object Oriented Programming methodologies in a commercial setting. You have good problem-solving abilities, a passion for writing clean and generally produce efficient, maintainable scaleable code.
+### Overall Architecture
+- **Modular Structure**: The code is organized into separate modules (`crawler.py`, `fetcher.py`, `parser.py`, `url_utils.py`, `cli.py`) to follow the Single Responsibility Principle (SRP). For example:
+  - `url_utils.py` handles all URL-related logic (normalization, resolution, domain extraction) as pure functions, making them easy to test and reuse.
+  - `fetcher.py` isolates HTTP requests and error handling.
+  - `parser.py` focuses on HTML parsing and link extraction.
+  - `crawler.py` orchestrates the crawl process.
+  - `cli.py` manages argument parsing and entrypoint.
 
-## The test 🧪
+- **Crawling Algorithm**: Breadth-First Search (BFS) using a `collections.deque` for the queue (O(1) pops). Visited URLs are tracked in a set for O(1) lookups to prevent duplicates and cycles.
 
-Create a Python app that can be run from the command line that will accept a base URL to crawl the site.
-For each page it finds, the script will print the URL of the page and all the URLs it finds on that page.
-The crawler will only process that single domain and not crawl URLs pointing to other domains or subdomains.
-Please employ patterns that will allow your crawler to run as quickly as possible, making full use any
-patterns that might boost the speed of the task, whilst not sacrificing accuracy and compute resources.
-Do not use tools like Scrapy or Playwright. You may use libraries for other purposes such as making HTTP requests, parsing HTML and other similar tasks.
+- **Concurrency Model**: Used `concurrent.futures.ThreadPoolExecutor` for parallel fetching in batches. This is ideal for I/O-bound tasks like HTTP requests, allowing multiple pages to be fetched simultaneously without blocking.
+  
+  Options considered: Sequential (simple but slow), multiprocessing (overkill for I/O, higher overhead), asyncio (more efficient for high concurrency but steeper learning curve and requires async-compatible libraries like aiohttp). Threading was chosen for simplicity and sufficient speed gains.
 
-## The objective
+- **URL Handling**: 
+  - Normalization removes fragments, trailing slashes (except root), and lowercases scheme/netloc to canonicalize URLs.
+  - Domain filtering uses `urllib.parse.urlparse.netloc` for exact matches (e.g., "example.com" != "blog.example.com").
+  - Resolution with `urljoin` handles relative, absolute, and protocol-relative links.
 
-This exercise is intended to allow you to demonstrate how you design software and write good quality code.
-We will look at how you have structured your code and how you test it. We want to understand how you have gone about
-solving this problem, what tools you used to become familiar with the subject matter and what tools you used to
-produce the code and verify your work. Please include detailed information about your IDE, the use of any
-interactive AI (such as Copilot) as well as any other AI tools that form part of your workflow.
+- **Error Handling**: 
+  - Catches `requests.RequestException` and logs warnings/errors.
+  - Configurable delay between requests to avoid server overload.
+  - User-Agent header set to identify the crawler ethically.
+  
+  Options considered: Implementing robots.txt parsing (using `urllib.robotparser`) but omitted due to time; could be added easily.
 
-You might also consider how you would extend your code to handle more complex scenarios, such a crawling
-multiple domains at once, thinking about how a command line interface might not be best suited for this purpose
-and what alternatives might be more suitable. Also, feel free to set the repo up as you would a production project.
+- **Output and Logging**: Uses `print` for the required URL/links output (sorted for readability) and `logging` for info/warnings/errors. This separates user-facing output from debug info.
 
-Extend this README to include a detailed discussion about your design decisions, the options you considered and
-the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
+### Tools and Workflow
+- **IDE**: Visual Studio Code with extensions for Python, Black (auto-formatting), and Flake8 (linting). This setup ensured PEP8 compliance and quick debugging.
+- **AI Assistance**: 
+  - GitHub Copilot was used for initial code suggestions (e.g., boilerplate for ThreadPoolExecutor and URL normalization). I reviewed and refined all suggestions to fit the design.
+  - Grok (xAI) was consulted for brainstorming structure, trade-offs, and best practices (e.g., "efficient Python crawler without Scrapy"). No direct code copying; instead, it helped validate decisions like threading vs. asyncio.
+  - StackOverflow and Python docs were referenced manually for specifics (e.g., `urljoin` behavior).
+- **Version Control**: Git with commits reflecting incremental development.
+- **Testing Framework**: Pytest with `responses` for mocking HTTP. Focused on unit tests for isolation; no end-to-end due to time.
 
-# Instructions
+## Trade-Offs
 
-1. Create a repo.
-2. Tackle the test.
-3. Push the code back.
-4. Add us (@2014klee, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
-5. Notify your TA so they can chase the reviewers.
+- **Speed vs. Resource Usage/Politeness**: Concurrency boosts speed but risks overwhelming servers or consuming high memory/CPU. Mitigated by batching, configurable workers (default 5), and delays (default 0.5s). Trade-off: Slower than max-parallel but ethical and stable.
+  
+- **Accuracy vs. Completeness**: Filters strictly to same domain and HTTP/HTTPS links, ignoring JS/mailto/anchors. This ensures accuracy but misses dynamic content (e.g., JS-loaded links). Trade-off: Simpler parsing (no browser emulation) vs. incomplete crawls; noted as a limitation since Playwright is forbidden.
+
+- **Simplicity vs. Extensibility**: Kept code straightforward (no over-engineering like config files or DB persistence) to fit time box. Trade-off: Easier to understand/review but requires code changes for new features (e.g., multi-domain).
+
+- **Testing Depth**: Unit tests cover 80%+ of critical paths but no integration tests for full crawls (time constraint). Trade-off: Quick validation vs. comprehensive coverage.
+
+- **Performance on Large Sites**: Caps at `max_pages` (default 500) to prevent infinite runs. Trade-off: Safe but may truncate deep sites; could use max_depth instead.
+
+## Extensions and Future Improvements
+
+If not time-constrained, I would refine the following:
+
+- **Multi-Domain Crawling**: Add a `--domains` flag accepting a comma-separated list or file. Modify `is_same_domain` to check against a set. For large-scale, switch CLI to a web API (e.g., Flask/FastAPI) with async endpoints for submitting jobs and polling results—better for monitoring long-running crawls than a blocking CLI.
+
+- **Advanced Features**:
+  - Respect `robots.txt` by integrating `urllib.robotparser` in `fetcher.py`.
+  - Handle sitemaps.xml for faster discovery (parse and enqueue from it).
+  - Persistence: Store visited/queue in Redis or SQLite for resumable/distributed crawls.
+  - Output Formats: Add `--output json/csv` for structured exports.
+
+- **Performance Optimizations**: 
+  - Switch to asyncio + aiohttp for higher concurrency (100+ workers) without threading overhead.
+  - Rate limiting with `ratelimit` library or token bucket for bursty but polite requests.
+
+- **Monitoring and Metrics**: Integrate Prometheus or simple stats (e.g., crawl time, pages/sec) via logging.
+
+- **Edge Cases**: More tests for redirects, non-UTF8 encodings, large pages. Add configurable timeouts/retries.
+
+- **Deployment**: Dockerize for easy sharing; add CI/CD with GitHub Actions for tests/linting.
