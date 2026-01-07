@@ -4,7 +4,9 @@ from urllib.parse import urljoin, urlparse, urlunparse
 
 
 def process_url(href: str, base_url: str, base_domain: str) -> str | None:
-    """Process a discovered href into a normalised absolute URL if it's valid and on the same domain.
+    """Process a discovered href into a normalised absolute URL.
+
+    Returns None if the URL is invalid or on a different domain.
 
     Args:
         href: The href value found on a page (may be relative or absolute).
@@ -34,14 +36,16 @@ def process_url(href: str, base_url: str, base_domain: str) -> str | None:
     if netloc.startswith("www."):
         netloc = netloc[4:]
     path = parsed.path.rstrip("/") or "/"
-    normalised = urlunparse((
-        parsed.scheme.lower(),
-        netloc,
-        path,
-        parsed.params,
-        parsed.query,
-        "",  # Remove fragment
-    ))
+    normalised = urlunparse(
+        (
+            parsed.scheme.lower(),
+            netloc,
+            path,
+            parsed.params,
+            parsed.query,
+            "",  # Remove fragment
+        )
+    )
 
     return normalised
 
