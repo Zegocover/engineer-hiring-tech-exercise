@@ -1,17 +1,21 @@
 """Tests for HTTP fetcher."""
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from crawler.fetcher import FetchError, fetch
 
 
 @pytest.fixture
-def mock_client(mocker):
-    return mocker.AsyncMock(spec=httpx.AsyncClient)
+def mock_client(mocker: MockerFixture) -> AsyncMock:
+    mock: AsyncMock = mocker.AsyncMock(spec=httpx.AsyncClient)
+    return mock
 
 
-async def test_fetch_returns_html_on_success(mock_client) -> None:
+async def test_fetch_returns_html_on_success(mock_client: AsyncMock) -> None:
     mock_response = httpx.Response(
         200,
         content=b"<html><body>Hello</body></html>",
@@ -26,7 +30,7 @@ async def test_fetch_returns_html_on_success(mock_client) -> None:
     assert result.error is None
 
 
-async def test_fetch_returns_not_html_error_for_json(mock_client) -> None:
+async def test_fetch_returns_not_html_error_for_json(mock_client: AsyncMock) -> None:
     mock_response = httpx.Response(
         200,
         content=b"{}",
@@ -41,7 +45,7 @@ async def test_fetch_returns_not_html_error_for_json(mock_client) -> None:
     assert result.error is FetchError.NOT_HTML
 
 
-async def test_fetch_returns_http_error_for_404(mock_client) -> None:
+async def test_fetch_returns_http_error_for_404(mock_client: AsyncMock) -> None:
     mock_response = httpx.Response(404, request=httpx.Request("GET", "https://example.com"))
     mock_client.get.return_value = mock_response
 
@@ -51,7 +55,7 @@ async def test_fetch_returns_http_error_for_404(mock_client) -> None:
     assert result.error is FetchError.HTTP_ERROR
 
 
-async def test_fetch_returns_connection_error_on_failure(mock_client) -> None:
+async def test_fetch_returns_connection_error_on_failure(mock_client: AsyncMock) -> None:
     mock_client.get.side_effect = httpx.ConnectError("Connection refused")
 
     result = await fetch(mock_client, "https://example.com")
