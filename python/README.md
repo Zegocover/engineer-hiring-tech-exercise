@@ -132,6 +132,8 @@ another dev. Once we have agreed on a plan, it is split up into phases so I can 
 
 Unless I'm making a PoC, I never have auto-accept edits on. It makes things take slightly longer but I like seeing the changes as they're made as it helps provide more areas for discussion as the work is being completed, rather than being surprised to end up with a load of slop right at the end when I'm about to make a PR.
 
+I've added the plan as well but would usually not commit this.
+
 ## Design Decisions
 
 ### Async with httpx
@@ -187,7 +189,7 @@ Unless I'm making a PoC, I never have auto-accept edits on. It makes things take
 
 ### No depth limiting
 - Crawls everything reachable
-- Trade-off: could get stuck in infinite pagination
+- Trade-off: could get stuck in infinite pagination (happened with Google)
 
 ## Future Enhancements
 
@@ -199,3 +201,7 @@ Unless I'm making a PoC, I never have auto-accept edits on. It makes things take
 - Retry with exponential backoff
 - Depth/page count limits
 - Content deduplication (hash-based)
+- Better logging
+- Metrics
+- More complete local environment (Docker compose, local web app, etc.)
+- Saving of results
