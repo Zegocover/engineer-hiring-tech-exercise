@@ -78,3 +78,68 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@2014klee, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+---
+
+# Solution Documentation
+
+## Usage
+
+### 1. Setup
+```bash
+# Navigate to the python directory
+cd python
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Run the Crawler
+```bash
+python -m src.main https://books.toscrape.com/ --rate-limit 5
+```
+
+### 3. Run Tests
+```bash
+pytest
+```
+
+## Design Decisions
+
+### Concurrency Model
+I chose `asyncio` and `aiohttp` for this I/O-bound task.
+- **Why**: Crawling involves waiting for network responses. Async IO allows us to handle many concurrent requests on a single thread without the overhead of OS threads or processes.
+- **Trade-off**: Async code can be slightly more complex to debug than synchronous code, but for high-performance crawling, it is the standard modern Python approach.
+
+### HTML Parsing
+I used `BeautifulSoup` with `lxml`.
+- **Why**: `lxml` is extremely fast and robust. `BeautifulSoup` provides a convenient API.
+- **Trade-off**: `lxml` requires C dependencies, which can sometimes be tricky to install on some systems (though usually fine on modern OSs). `html.parser` is built-in but slower.
+
+### Robust Error Handling
+- **Retry Strategy**: Implemented an exponential backoff decorator in `src/utils.py`. The crawler retries on network failures, `5xx` (Server Errors), and `429` (Too Many Requests).
+- **Client Errors**: `4xx` errors (e.g., `404 Not Found`) are logged as warnings and skipped to avoid wasting resources.
+
+### Output Management (CSV Streaming)
+- **Solution**: Implemented a dedicated `writer` coroutine that streams results to a `csv` file (default: `results.csv`).
+- **Async I/O**: The file writing logic runs in a separate thread (via `asyncio.to_thread`) to prevent blocking the main event loop.
+
+### Politeness
+- **Rate Limiting**: Implemented a **Token Bucket** algorithm to enforce a strict requests-per-second limit (configurable via `--rate-limit`).
+- **Robots.txt**: The crawler automatically fetches `robots.txt` at startup using `urllib.robotparser` and checks every URL before visiting.
+- **Why**: Essential for production-grade crawling to respect site owners and avoid getting blocked.
+
+### Architecture
+- **`Crawler` class**: Encapsulates state (visited set, queue, rate limiter).
+- **Producer-Consumer**: The `worker` method consumes the URL queue and produces new links.
+- **Modularity**: Code split into `src/main.py`, `src/crawler.py`, `src/parser.py`, and `src/utils.py` for testability.
+
+## Trade-offs & Future Improvements
+- **Distributed Crawling**: For massive scale (millions of pages), a single machine is insufficient. We would need a distributed queue (e.g., Redis, Kafka) and multiple worker nodes.
+- **JavaScript Support**: This crawler fetches static HTML. It cannot handle Single Page Applications (SPAs) that require JS execution. A headless browser like **Playwright** or **Selenium** would be needed for that.
+
+## AI Tools Used
+- **Google Gemini**: Used for generating the initial implementation plan, scaffolding the project structure, generating unit tests, and debugging configuration issues.
