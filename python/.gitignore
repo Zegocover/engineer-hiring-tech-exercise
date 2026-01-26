@@ -1,0 +1,12 @@
+.venv/
+.coverage
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+output.json
+output.json.*
+logs.*
