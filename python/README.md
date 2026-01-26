@@ -1,5 +1,95 @@
 # python-developer-test
 
+## Planning
+
+See the working plan in `PLAN.md`.
+
+## Running
+
+Install dependencies and run the crawler with uv:
+
+```bash
+uv sync
+uv run crawler https://example.com
+```
+
+CLI usage:
+
+```
+usage: crawler [-h] [--profile {conservative,balanced,aggressive}]
+               [--output {text,json}] [--output-file OUTPUT_FILE]
+               [--robots {respect,ignore}] [--user-agent USER_AGENT]
+               [--strip-fragments | --no-strip-fragments]
+               [--only-http-links | --no-only-http-links]
+               [--only-in-scope-links | --no-only-in-scope-links] [--verbose]
+               base_url
+
+positional arguments:
+  base_url              Starting URL to crawl (http/https).
+
+options:
+  -h, --help            show this help message and exit
+
+Output:
+  --output {text,json}  Output format (written to a file).
+  --output-file OUTPUT_FILE
+                        Output file path; defaults to output.txt or output.json
+                        based on format.
+
+Crawl options:
+  --profile {conservative,balanced,aggressive}
+                        Preset crawl limits (max pages/depth, concurrency,
+                        timeouts, rate).
+  --robots {respect,ignore}
+                        Whether to respect robots.txt rules.
+  --user-agent USER_AGENT
+                        User-Agent header value for HTTP requests.
+  --strip-fragments, --no-strip-fragments
+                        Strip #fragments from extracted links (default: true).
+  --only-http-links, --no-only-http-links
+                        Only include http/https links in output (default: true).
+  --only-in-scope-links, --no-only-in-scope-links
+                        Only include in-scope links in output (default: false).
+  --verbose             Enable verbose (debug) logging.
+```
+
+## Design decisions and trade-offs summary
+
+This README includes a short summary of the key design decisions, options considered, and trade-offs. The full working notes, rationale, and extended discussion live in `PLAN.md`.
+
+### Architecture and flow
+I used an async, queue-driven design with a scheduler and worker tasks. The scheduler is the single place that handles scope checks, deduplication, robots policy, and enqueuing. Workers focus on fetching, parsing, and emitting links. This split keeps URL governance centralised and avoids locks in hot paths, while still allowing concurrency for I/O-bound work.
+
+### Scope rules
+The crawler only accepts URLs on the exact host of the base URL. This matches the prompt requirement to exclude subdomains. I previously considered eTLD plus one, but removed it to keep behaviour strict and aligned with the spec.
+
+### URL handling and normalisation
+I retain query strings because they can encode page-specific content. Fragments are stripped by default because they are typically in page anchors, and they can explode the URL set. Trailing slashes are normalised for dedupe to reduce duplicates, and the output uses the normalised page URL to keep results stable across runs. Link filtering for fragments, scheme, and in-scope output is configurable.
+
+### Fetching and retries
+The fetcher uses `aiohttp` with a shared session, explicit timeouts, and typed error handling for redirects, 429, retryable and non-retryable failures. For retryable errors I use exponential backoff with a cap, and honour Retry After when present. I cap retry attempts to avoid infinite loops.
+
+### Redirects
+Redirects are not auto-followed. The worker raises a redirect error and the redirect target is sent back to the scheduler as a candidate. This preserves consistent scope and robots checks in one place.
+
+### Output format and streaming
+Text and JSON outputs are supported via a renderer interface. Output is streamed to avoid large memory usage. The renderer now owns a lock so concurrent writes from workers do not interleave.
+
+### Shutdown and determinism
+I added a safe shutdown that waits for both queues to drain and then stops the workers. This avoids stopping while work is still in flight. For stability, the page URLs written to output are normalised so the result set is consistent across runs.
+
+### Testing strategy
+I focused on fast unit tests for URL parsing, scoping, parsing, scheduling, fetching, and rendering. There is a minimal integration-style test for `app.run_async` to verify wiring. Tests use fixtures rather than live network calls where possible.
+
+### Tooling, IDE, and AI usage
+- **IDE:** Visual Studio Code.
+- **AI assistance:** Codex (ChatGPT) was used as a collaborative assistant for design discussions, suggestions, refactors, and test coverage improvements. Final decisions and changes were applied by me. Towards the end of the exercise, Codex was asked to complete a thorough code review, and changes were made based on the suggestions.
+- **Formatting and linting:** Black and Ruff were configured and used to keep style consistent and catch common issues.
+- **Workflow:** I used uv for dependency management and pytest for tests. The project uses a standard `src/` layout with an isolated `tests/` directory. Notes and extended reasoning live in `PLAN.md`.
+
+### Deferred items
+I left sitemap discovery, per-path crawl delay, and a writer queue as could-have items to keep scope tight. JS rendering and multi-domain crawling are explicitly out of scope for this submission.
+
 # Zego
 
 ## About Us
