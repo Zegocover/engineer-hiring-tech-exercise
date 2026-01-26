@@ -1,0 +1,49 @@
+[project]
+name = "crawler"
+version = "0.1.0"
+description = "Single-domain web crawler CLI"
+readme = "README.md"
+requires-python = ">=3.13"
+license = {text = "UNLICENSED"}
+authors = [
+  {name = "Tom"}
+]
+dependencies = [
+  "aiohttp>=3.9",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.2",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+crawler = "crawler.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.2",
+  "pytest-asyncio>=0.23",
+  "aioresponses>=0.7",
+  "black>=24.4",
+  "ruff>=0.5",
+  "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 79
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 79
+target-version = "py313"
+lint.select = [
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+]
