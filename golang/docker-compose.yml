@@ -1,0 +1,22 @@
+services:
+  crawler:
+    build: .
+    command: ["-url", "${CRAWL_URL:-https://books.toscrape.com}", "-workers", "5", "-rate", "2", "-redis", "-redis-addr", "redis:6379"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CRAWL_URL=${CRAWL_URL:-https://books.toscrape.com}
+
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
