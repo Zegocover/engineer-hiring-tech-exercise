@@ -9,7 +9,7 @@ from crawler.site_crawler import SiteCrawler
 def test_main_parses_args_and_calls_crawler(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
-    def _crawl(self) -> None:
+    async def _crawl(self) -> None:
         captured["called"] = True
         captured["instance"] = self
         return None
@@ -44,7 +44,7 @@ def test_main_parses_args_and_calls_crawler(monkeypatch: pytest.MonkeyPatch) -> 
 def test_output_defaults_to_json(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
-    def _crawl(self) -> None:
+    async def _crawl(self) -> None:
         captured["instance"] = self
         return None
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 from typing import Callable
 
 from crawler.site_crawler import SiteCrawler
@@ -86,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         output=args.output,
         output_format=output_format,
     )
-    crawler.crawl()
+    asyncio.run(crawler.crawl())
     return 0
 
 

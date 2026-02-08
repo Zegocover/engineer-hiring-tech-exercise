@@ -13,6 +13,14 @@ def test_site_crawler_accepts_valid_defaults() -> None:
     assert crawler.retries == 1
 
 
+@pytest.mark.asyncio
+async def test_site_crawler_is_single_use() -> None:
+    crawler = SiteCrawler("https://example.com")
+    await crawler.crawl()
+    with pytest.raises(RuntimeError):
+        await crawler.crawl()
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
