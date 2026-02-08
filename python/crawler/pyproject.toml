@@ -25,6 +25,8 @@ black = "^26.1.0"
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "B", "ASYNC"]
 
 [build-system]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from crawler.page_worker import PageResult
 from crawler.site_crawler import SiteCrawler
 
 
@@ -14,8 +15,14 @@ def test_site_crawler_accepts_valid_defaults() -> None:
 
 
 @pytest.mark.asyncio
-async def test_site_crawler_is_single_use() -> None:
+async def test_site_crawler_is_single_use(monkeypatch: pytest.MonkeyPatch) -> None:
     crawler = SiteCrawler("https://example.com")
+
+    async def _fetch(self, url: str) -> PageResult:
+        return PageResult(url=url, links=[], crawlable_links=[])
+
+    monkeypatch.setattr("crawler.page_worker.PageWorker.fetch", _fetch)
+
     await crawler.crawl()
     with pytest.raises(RuntimeError):
         await crawler.crawl()
@@ -34,7 +41,6 @@ async def test_site_crawler_is_single_use() -> None:
         {"retries": 4},
     ],
 )
-
 def test_site_crawler_rejects_invalid_bounds(kwargs: dict[str, object]) -> None:
     with pytest.raises(ValueError):
         SiteCrawler("https://example.com", **kwargs)

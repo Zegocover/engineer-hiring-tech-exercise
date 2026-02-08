@@ -39,13 +39,19 @@ class SiteCrawler:
         self._visited: set[str] = set()
         self._scheduled: set[str] = set()
         self._queue: deque[WorkItem] = deque()
-        self._worker = PageWorker(timeout=self.timeout, retries=self.retries)
+        self._worker = PageWorker(
+            base_url=self.base_url,
+            timeout=self.timeout,
+            retries=self.retries,
+        )
         self._seed()
         self._started = False
 
     async def crawl(self) -> None:
         if self._started:
-            raise RuntimeError("SiteCrawler instances are single-use; create a new one.")
+            raise RuntimeError(
+                "SiteCrawler instances are single-use; create a new one."
+            )
         self._started = True
 
         while self._queue:
@@ -73,12 +79,13 @@ class SiteCrawler:
     def _store_results(self, results: list[PageResult]) -> None:
         for result in results:
             self._results_by_url[result.url] = result
+            print(result.to_text())
             if result.error is None:
                 self._visited.add(result.url)
 
     def _enqueue_discovered(self, results: list[PageResult]) -> bool:
         for result in results:
-            for link in result.links:
+            for link in result.crawlable_links:
                 if link in self._scheduled:
                     continue
                 if self.max_urls is not None and len(self._scheduled) >= self.max_urls:
