@@ -64,19 +64,27 @@ class Crawler:
         ) as session:
             worker = Worker(base_url=self._base_url, session=session)
 
-            while self._queue:
-                batch = self._dequeue_batch()
-                batch_results = await self._fetch_batch(worker, batch)
-                self._store_results(batch_results)
-                self._enqueue_discovered(batch_results)
-                self._handle_retries(batch_results)
-                self._logger.info(
-                    "Batch fetched=%d queued=%d scheduled=%d visited=%d",
-                    len(batch_results),
-                    len(self._queue),
-                    len(self._scheduled),
-                    len(self._visited),
+            try:
+                while self._queue:
+                    batch = self._dequeue_batch()
+                    batch_results = await self._fetch_batch(worker, batch)
+                    self._store_results(batch_results)
+                    self._enqueue_discovered(batch_results)
+                    self._handle_retries(batch_results)
+                    self._logger.info(
+                        "Batch fetched=%d queued=%d scheduled=%d visited=%d",
+                        len(batch_results),
+                        len(self._queue),
+                        len(self._scheduled),
+                        len(self._visited),
+                    )
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                self._logger.warning(
+                    "Crawl interrupted; emitting partial results (%d pages)",
+                    len(self._results),
                 )
+                self._emit_outputs()
+                return
 
         self._logger.info("Crawl finished (%d pages)", len(self._results))
         self._emit_outputs()
