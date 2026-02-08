@@ -293,13 +293,7 @@ These were intentionally excluded to avoid over‑engineering but can be added w
 
 ---
 
-## 14. Summary
-
-This design delivers a **fast, safe, and testable crawler** aligned with production engineering principles while remaining intentionally simple. The architecture demonstrates clear ownership boundaries, explicit trade‑offs, and strong extensibility without unnecessary complexity.
-
----
-
-## 15. Dockerization Discussion
+## 14. Dockerization Discussion
 
 Containerization is a natural next step for reproducible runs and simplified onboarding. A minimal container would:
 - Install runtime dependencies
@@ -311,3 +305,11 @@ Containerization is a natural next step for reproducible runs and simplified onb
 - Docker setup would be straightforward but adds packaging/ops concerns outside the core requirements.
 
 If needed, a slim image could be added without impacting the crawler architecture.
+
+---
+
+## 15. Summary
+
+This design delivers a **fast, safe, and testable crawler** aligned with production engineering principles while remaining intentionally simple. The architecture demonstrates clear ownership boundaries, explicit trade‑offs, and strong extensibility without unnecessary complexity.
+
+---

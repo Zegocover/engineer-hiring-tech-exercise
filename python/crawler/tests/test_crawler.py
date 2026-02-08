@@ -80,6 +80,58 @@ async def test_crawler_writes_output_file(
 
 
 @pytest.mark.asyncio
+async def test_crawler_stdout_format_has_no_page_index(
+    capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    crawler = Crawler("https://example.com")
+
+    async def _fetch(self, url: str) -> Result:
+        if url == "https://example.com":
+            return Result(
+                url=url,
+                links=["https://example.com/a"],
+                crawlable_links=["https://example.com/a"],
+            )
+        return Result(url=url, links=[], crawlable_links=[])
+
+    monkeypatch.setattr("crawler.worker.Worker.fetch", _fetch)
+
+    await crawler.crawl()
+
+    output = capsys.readouterr().out
+    first_line = output.splitlines()[0]
+    assert first_line == "https://example.com"
+    assert "   - [1]: https://example.com/a" in output
+    assert "\n\n" in output
+
+
+@pytest.mark.asyncio
+async def test_crawler_stops_scheduling_after_max_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    crawler = Crawler("https://example.com", max_urls=2)
+
+    async def _fetch(self, url: str) -> Result:
+        if url == "https://example.com":
+            return Result(
+                url=url,
+                links=["https://example.com/a", "https://example.com/b"],
+                crawlable_links=["https://example.com/a", "https://example.com/b"],
+            )
+        return Result(url=url, links=[], crawlable_links=[])
+
+    monkeypatch.setattr("crawler.worker.Worker.fetch", _fetch)
+
+    await crawler.crawl()
+
+    assert crawler._scheduled == {
+        "https://example.com",
+        "https://example.com/a",
+    }
+    assert len(crawler._results) == 2
+
+
+@pytest.mark.asyncio
 async def test_crawler_logs_progress(caplog, monkeypatch: pytest.MonkeyPatch) -> None:
     caplog.set_level(logging.INFO)
     crawler = Crawler("https://example.com")
