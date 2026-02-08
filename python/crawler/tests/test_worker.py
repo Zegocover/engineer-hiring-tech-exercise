@@ -96,7 +96,7 @@ async def test_worker_redirect_to_external_domain_sets_error() -> None:
     external_app = web.Application()
 
     async def redirect(request: web.Request) -> web.Response:
-        return web.HTTPFound(location=external_url)
+        raise web.HTTPFound(location=external_url)
 
     async def external(request: web.Request) -> web.Response:
         return web.Response(text="<html>external</html>", content_type="text/html")
