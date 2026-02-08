@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 from typing import Callable
 
-from crawler.site_crawler import SiteCrawler
+from crawler.crawler import Crawler
 
 
 def _bounded_int(min_value: int, max_value: int) -> Callable[[str], int]:
@@ -47,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write output to a file instead of stdout.",
     )
     parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress stdout output (useful with --output).",
+    )
+    parser.add_argument(
         "--batch-size",
         type=_bounded_int(1, 10),
         default=10,
@@ -76,16 +82,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    output_format = "json" if args.output else "text"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
-    crawler = SiteCrawler(
+    crawler = Crawler(
         args.url,
         batch_size=args.batch_size,
         max_urls=args.max_urls,
         timeout=args.timeout,
         retries=args.retries,
         output=args.output,
-        output_format=output_format,
+        quiet=args.quiet,
     )
     asyncio.run(crawler.crawl())
     return 0

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from crawler import main as main_module
-from crawler.site_crawler import SiteCrawler
+from crawler.crawler import Crawler
 
 
 def test_main_parses_args_and_calls_crawler(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -14,7 +14,7 @@ def test_main_parses_args_and_calls_crawler(monkeypatch: pytest.MonkeyPatch) -> 
         captured["instance"] = self
         return None
 
-    monkeypatch.setattr(SiteCrawler, "crawl", _crawl)
+    monkeypatch.setattr(Crawler, "crawl", _crawl)
 
     result = main_module.main(
         [
@@ -27,18 +27,19 @@ def test_main_parses_args_and_calls_crawler(monkeypatch: pytest.MonkeyPatch) -> 
             "3.5",
             "--retries",
             "2",
+            "--quiet",
         ]
     )
 
     assert result == 0
     assert captured.get("called") is True
     instance = captured.get("instance")
-    assert isinstance(instance, SiteCrawler)
-    assert instance.batch_size == 5
-    assert instance.max_urls == 25
-    assert instance.timeout == 3.5
-    assert instance.retries == 2
-    assert instance.output_format == "text"
+    assert isinstance(instance, Crawler)
+    assert instance._batch_size == 5
+    assert instance._max_urls == 25
+    assert instance._timeout == 3.5
+    assert instance._retries == 2
+    assert instance._quiet is True
 
 
 def test_output_defaults_to_json(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -48,14 +49,14 @@ def test_output_defaults_to_json(monkeypatch: pytest.MonkeyPatch) -> None:
         captured["instance"] = self
         return None
 
-    monkeypatch.setattr(SiteCrawler, "crawl", _crawl)
+    monkeypatch.setattr(Crawler, "crawl", _crawl)
 
     result = main_module.main(["https://example.com", "--output", "out.json"])
 
     assert result == 0
     instance = captured.get("instance")
-    assert isinstance(instance, SiteCrawler)
-    assert instance.output_format == "json"
+    assert isinstance(instance, Crawler)
+    assert instance._quiet is False
 
 
 @pytest.mark.parametrize(
