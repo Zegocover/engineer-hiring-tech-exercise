@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "crawler", from = "src"}]
 
 [tool.poetry.scripts]
-crawler = "crawler.cli:main"
+crawler = "crawler.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
