@@ -1,0 +1,17 @@
+[project]
+name = "simple-web-crawler"
+version = "0.1.0"
+description = "A simple asynchronous web crawler CLI tool."
+dependencies = [
+    "aiohttp",
+    "beautifulsoup4",
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.scripts]
+web-crawler = "crawler.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
