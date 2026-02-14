@@ -78,3 +78,103 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+**Solution Overview**
+This repository contains a CLI crawler that accepts a base URL, fetches pages within the same domain, and prints each page URL along with all discovered links on that page. It schedules only same-domain links for crawling, while still printing every link found.
+
+**Disclaimer**
+I generally prefer to keep documentation and code in separate artifacts, but I included all documents in this repo to provide full context for the exercise.
+
+**High-Level Architecture**
+```
+CLI Entry Point
+      |
+      v
+   Crawler (orchestrator)
+    |   |   |
+    |   |   +--> Output formatting (after crawl)
+    |   |
+    |   +------> Work Queue (BFS) + Scheduled/Visited sets
+    |
+    +------> Worker (fetch + parse + link discovery)
+```
+
+**How To Run (Poetry)**
+1. `cd python/crawler`
+2. `poetry install`
+3. `poetry run crawler https://example.com`
+
+**How To Run (Without Poetry)**
+1. `cd python/crawler`
+2. `python -m venv .venv`
+3. `source .venv/bin/activate`
+4. `pip install -r requirements.txt`
+5. `python -m crawler https://example.com`
+
+Notes: `requirements.txt` is generated via `poetry export -f requirements.txt --output requirements.txt --without-hashes`.
+
+**Toy Examples**
+1. `poetry run crawler https://example.com --max-urls 5`
+2. `poetry run crawler https://example.com --batch-size 3 --timeout 5`
+3. `poetry run crawler https://example.com --output out.txt`
+4. `poetry run crawler https://example.com --output out.txt --quiet`
+
+Output format notes: stdout omits page indices; the output file includes `[n]:` page indices. Blank lines separate pages in both.
+
+**Tests & Quality Checks**
+1. `poetry run pytest`
+2. `poetry run ruff check src tests`
+
+**Design Decisions & Trade-Offs**
+- BFS traversal with an in-memory queue for fairness and simple deduplication.
+- Separate sets for `_scheduled` and `_visited` to avoid duplicate work before fetch completion.
+- Async I/O with `aiohttp` and batching for throughput without overwhelming resources.
+- Worker extracts all links, but only same-domain links are used for crawling.
+- Output is emitted after the crawl completes to keep I/O out of the hot path.
+- Retries are handled in `Crawler` by re-queueing failed URLs to keep Worker simple.
+
+**Assumptions**
+- The base URL includes scheme and netloc.
+- Only exact netloc matches are crawlable, so subdomains are excluded.
+- Memory can hold the scheduled/visited sets for the crawl.
+
+**Known Issues / Risks**
+- The `max_urls` limit prevents scheduling more URLs, but in-flight or already queued pages can still be fetched.
+- Retries are handled by re-queueing failed URLs; exponential backoff and jitter are not implemented.
+- Redirects to external domains are treated as errors; some sites may redirect between equivalent hosts.
+
+**What’s Weak / Incomplete (And Why)**
+- **Deferred output**: Results are printed after the crawl completes. This keeps console output clean (no interleaving with logs), but it is less memory‑efficient and provides slower feedback for large crawls. A streaming printer could emit per‑page results while still writing logs to stderr, but we chose a single final output to keep the CLI experience clean.
+- **Minimal retry policy**: Retries simply re‑queue failed URLs without backoff or jitter. Adding retry delays would increase complexity and is more valuable in a long‑running service than in a short‑lived CLI tool. We kept it simple for now.
+- **Light URL canonicalization**: Only basic normalization is applied (e.g., fragments removed). More aggressive canonicalization (query normalization, trailing slash rules) can change semantics and adds complexity. The exercise favors clarity over exhaustive URL rewriting.
+- **In‑memory results**: All results are stored in memory, which is fine for a bounded crawl but becomes a bottleneck at scale. A persistent store (SQLite, file‑backed queue) would be necessary for very large crawls or multiple seed URLs, but was intentionally out of scope.
+
+**Complexity & Bottlenecks**
+- Time complexity is O(V + E) where V is pages visited and E is links processed per page.
+- Space complexity is O(V + E) due to stored results and link lists.
+- Bottlenecks: network latency, HTML parsing, and large link sets per page.
+- Potential optimizations: streaming output, limiting stored links, and incremental persistence.
+
+**Logging**
+- Progress logs are emitted during the crawl (batch size, queue length, scheduled/visited counts).
+
+**Tools & Workflow**
+**Environment**
+- IDE: VS Code
+- Assistant tools: ChatGPT (brainstorming) and Codex (implementation partner)
+
+**Process**
+1. **Requirement capture**: Read the assignment and documented explicit requirements, assumptions, and risks in `python/docs/notes.md`.
+2. **Exploration & ideation**: Used ChatGPT to brainstorm approaches, edge cases, and possible architectures.
+3. **Design**: Wrote a structured technical design in `python/docs/zego_crawler_technical_design_document.md`, clarifying components, responsibilities, and constraints.
+4. **Implementation**: Used this Codex chat to iteratively implement the crawler, tests, logging, and output behavior, validating each change against the requirements.
+5. **Refinement**: Adjusted naming, boundaries, and test coverage based on feedback and observed behavior.
+
+**Why this approach**
+- Keeps a clear paper trail from requirements → design → implementation.
+- Makes trade-offs explicit and reviewable.
+- Ensures test coverage evolves alongside behavior changes.
+
+**Open Tasks**
+- Push code and add collaborators per the test instructions.
+- Consider more robust retry policies (backoff, jitter) and better domain matching (public suffix list).
