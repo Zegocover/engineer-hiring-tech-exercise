@@ -78,3 +78,6 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou and @marliechiller) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+## Solution
+For solution details see [csharp](../csharp/README.md)
