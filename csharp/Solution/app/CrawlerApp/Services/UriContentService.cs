@@ -35,7 +35,7 @@ public class UriContentService(HttpClient httpClient, ILogger<UriContentService>
 public interface IUriContentService
 {
     /// <summary>
-    ///     Gets html content for a given uri. Returns null if html content not found.
+    ///     Gets HTML content for a given uri. Returns null if html content not found.
     /// </summary>
     /// <param name="uri"></param>
     /// <param name="cancellationToken"></param>
