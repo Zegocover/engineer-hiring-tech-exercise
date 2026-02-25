@@ -1,9 +1,9 @@
 <Solution>
   <Folder Name="/app/">
-    <Project Path="app\CrawlerApp\CrawlerApp.csproj" Type="C#" />
+    <Project Path="app\CrawlerApp\CrawlerApp.csproj" Type="C#"/>
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/"/>
   <Folder Name="/tests/unit/">
-    <Project Path="Tests\Tests.csproj" Type="C#" />
+    <Project Path="Tests\Tests.csproj" Type="C#"/>
   </Folder>
 </Solution>

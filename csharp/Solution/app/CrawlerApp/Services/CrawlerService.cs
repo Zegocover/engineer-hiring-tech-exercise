@@ -1,15 +1,20 @@
 using System.Collections.Concurrent;
+
 using HtmlAgilityPack;
+
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace CrawlerApp.Services;
 
-public partial class CrawlerService(IUriContentService uriContentService, IMemoryCache visitedUris, ILogger<CrawlerService> logger) : ICrawlerService
+public partial class CrawlerService(
+    IUriContentService uriContentService,
+    IMemoryCache visitedUris,
+    ILogger<CrawlerService> logger) : ICrawlerService
 {
+    /// <inheritdoc/>
     public async Task Crawl(Uri initialUri, CancellationToken cancellationToken)
     {
-        
         if (visitedUris.TryGetValue(initialUri.AbsoluteUri, out _))
         {
             LogAlreadyVisitedUri(logger, initialUri.AbsoluteUri);
@@ -32,6 +37,7 @@ public partial class CrawlerService(IUriContentService uriContentService, IMemor
             var links = ExtractLinksFromHtml(content, currentUri);
             foreach (var link in links)
             {
+                // Check if the link is valid and under the current uri domain
                 if (Uri.TryCreate(link, UriKind.Absolute, out var fullUrl) &&
                     fullUrl.Host == currentUri.Host)
                 {
@@ -44,7 +50,6 @@ public partial class CrawlerService(IUriContentService uriContentService, IMemor
                     visitedUris.Set(fullUrl.AbsoluteUri, true);
                     LogAddingUri(logger, fullUrl.AbsoluteUri);
                     queue.Enqueue(fullUrl);
-                    
                 }
             }
         }
@@ -59,11 +64,12 @@ public partial class CrawlerService(IUriContentService uriContentService, IMemor
         var anchorTags = htmlDoc.DocumentNode.SelectNodes("//a[@href]");
         foreach (var tag in anchorTags)
         {
-            var hrefValue = tag.GetAttributeValue(name:"href", def:"");
+            var hrefValue = tag.GetAttributeValue("href", "");
             if (string.IsNullOrWhiteSpace(hrefValue))
             {
                 continue;
             }
+
             var fullUrl = new Uri(baseUri, hrefValue);
             links.Add(fullUrl.ToString());
         }
@@ -84,7 +90,7 @@ public partial class CrawlerService(IUriContentService uriContentService, IMemor
 public interface ICrawlerService
 {
     /// <summary>
-    /// Crawl a given uri
+    ///     Crawl a given uri
     /// </summary>
     /// <param name="initialUri"></param>
     /// <param name="cancellationToken"></param>

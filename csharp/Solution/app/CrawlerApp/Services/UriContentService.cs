@@ -7,15 +7,12 @@ namespace CrawlerApp.Services;
 
 public class UriContentService(HttpClient httpClient, ILogger<UriContentService> logger) : IUriContentService
 {
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<string?> GetHtmlContent(Uri uri, CancellationToken cancellationToken)
     {
         try
         {
-            var request = new HttpRequestMessage
-            {
-                RequestUri =  uri
-            };
+            HttpRequestMessage request = new() { RequestUri = uri };
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Text.Html));
             var response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -23,6 +20,7 @@ public class UriContentService(HttpClient httpClient, ILogger<UriContentService>
             {
                 return await response.Content.ReadAsStringAsync(cancellationToken);
             }
+
             logger.LogError("Failed to retrieve content for uri {uri}. Content is not html", uri.AbsoluteUri);
             return null;
         }
@@ -37,7 +35,7 @@ public class UriContentService(HttpClient httpClient, ILogger<UriContentService>
 public interface IUriContentService
 {
     /// <summary>
-    /// Gets html content for a given uri. Returns null if html content not found.
+    ///     Gets html content for a given uri. Returns null if html content not found.
     /// </summary>
     /// <param name="uri"></param>
     /// <param name="cancellationToken"></param>

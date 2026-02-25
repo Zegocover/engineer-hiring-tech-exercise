@@ -1,13 +1,15 @@
 ﻿using System.Diagnostics;
+
 using CrawlerApp.Configuration;
 using CrawlerApp.Services;
-using Microsoft.Extensions.Hosting;
 using CrawlerApp.Startup;
+
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 var builder = Host.CreateDefaultBuilder();
-    
+
 builder.AddConfiguration(args)
     .AddServices();
 
@@ -29,6 +31,7 @@ foreach (var uri in urisToCrawl)
 {
     await crawlerService.Crawl(uri, CancellationToken.None);
 }
+
 var stopWatch = Stopwatch.StartNew();
 
 stopWatch.Stop();

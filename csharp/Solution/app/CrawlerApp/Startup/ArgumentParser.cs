@@ -5,7 +5,7 @@ namespace CrawlerApp.Startup;
 public static class ArgumentParser
 {
     /// <summary>
-    /// Parses the uri command line arguments while preserving other arguments so they do not get removed.
+    ///     Parses the uri command line arguments while preserving other arguments so they do not get removed.
     /// </summary>
     /// <param name="config"></param>
     /// <param name="args"></param>
@@ -15,7 +15,7 @@ public static class ArgumentParser
         var uriValues = new List<string>();
         var remainingArgs = new List<string>();
 
-        for (int i = 0; i < args.Length; i++)
+        for (var i = 0; i < args.Length; i++)
         {
             var a = args[i];
             // Only support the simple repeated form: --uri <value>
@@ -33,7 +33,7 @@ public static class ArgumentParser
         if (uriValues.Count > 0)
         {
             var dict = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < uriValues.Count; i++)
+            for (var i = 0; i < uriValues.Count; i++)
             {
                 // Provide indexed keys that the binder binds to when binding root -> CrawlerAppOptions
                 dict[$"Uri:{i}"] = uriValues[i];
