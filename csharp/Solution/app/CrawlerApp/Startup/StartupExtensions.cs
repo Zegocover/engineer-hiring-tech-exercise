@@ -41,7 +41,6 @@ public static class StartupExtensions
             var options = new CrawlerAppOptions();
             config.Bind(options);
 
-            // ...existing code...
             options.Uri = options.Uri
                 .Where(uri => Uri.IsWellFormedUriString(uri.ToString(), UriKind.Absolute))
                 .Select(uri => new Uri(uri.ToString()))

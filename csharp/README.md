@@ -18,7 +18,6 @@ The solution follows SOLID principles with a clean separation of concerns:
 - **Flexible CLI**: Supports multiple URI arguments via repeated `--uri` flags for crawling multiple domains
 
 ### Learning & Technologies
-
 - **HTML Link Parsing**: Developed understanding of HTML link syntax and anchor tag structure (`<a href="...">`) to correctly extract and validate URLs from web pages
 - **HtmlAgilityPack**: Leveraged this library for DOM traversal and XPath queries to parse HTML content and extract valid hyperlinks from crawled pages
 
