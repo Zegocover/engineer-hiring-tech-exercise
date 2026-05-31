@@ -52,6 +52,15 @@ class TestExtractHost:
     def test_keeps_nondefault_port(self) -> None:
         assert extract_host("http://a.com:8080/p") == "a.com:8080"
 
+    def test_strips_userinfo(self) -> None:
+        assert extract_host("http://user:pass@a.com/p") == "a.com"
+
+    def test_ipv6_literal_keeps_brackets(self) -> None:
+        assert extract_host("http://[::1]:8080/p") == "[::1]:8080"
+
+    def test_ipv6_default_port_dropped(self) -> None:
+        assert extract_host("http://[::1]:80/p") == "[::1]"
+
 
 class TestSameHost:
     def test_identical(self) -> None:
@@ -65,3 +74,6 @@ class TestSameHost:
 
     def test_other_domain(self) -> None:
         assert same_host("http://b.com/x", "a.com") is False
+
+    def test_userinfo_does_not_break_same_host(self) -> None:
+        assert same_host("http://user:pass@a.com/x", "a.com") is True

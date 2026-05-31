@@ -2,17 +2,30 @@
 
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-_DEFAULT_PORTS = {"http": "80", "https": "443"}
+_DEFAULT_PORTS = {"http": 80, "https": 443}
 _FOLLOWABLE_SCHEMES = {"http", "https"}
 
 
 def _normalize_netloc(scheme: str, netloc: str) -> str:
-    """Lowercase the host and drop the port when it is the scheme default."""
-    host, _, port = netloc.partition(":")
-    host = host.lower()
-    if port and port == _DEFAULT_PORTS.get(scheme):
+    """Canonical host[:port]: drop userinfo, lowercase host, drop default port.
+
+    Uses urlsplit's structured accessors rather than splitting on the first
+    colon, so credentials (user:pass@host) and IPv6 literals ([::1]) parse
+    correctly instead of corrupting the host.
+    """
+    parsed = urlsplit(f"//{netloc}")
+    host = (parsed.hostname or "").lower()
+    if not host:
+        return ""
+    if ":" in host:  # IPv6 literal — hostname strips the brackets; re-add them.
+        host = f"[{host}]"
+    try:
+        port = parsed.port
+    except ValueError:
+        port = None
+    if port is None or port == _DEFAULT_PORTS.get(scheme):
         return host
-    return f"{host}:{port}" if port else host
+    return f"{host}:{port}"
 
 
 def normalize(href: str, base_url: str) -> str | None:
