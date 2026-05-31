@@ -391,7 +391,58 @@ core is the intended direction, which this layering already supports.
 
 ---
 
-## 11. Non-goals (restated)
+## 11. Documentation deliverable
+
+Documentation is a graded deliverable, not an afterthought: the brief explicitly
+asks the `python/README.md` to carry a written discussion of design decisions and
+trade-offs. The implementation plan therefore includes an explicit **documentation
+step** (run after the code lands, so the prose matches what was actually built),
+producing:
+
+1. **Architecture documentation** — extend `python/README.md` with an
+   "Architecture & design" section covering:
+   - the layering (Clean Architecture: `crawler` / `domains` / `gateways`) and the
+     dependency-inward rule;
+   - the two-stage fetch/parse pipeline, the two queues, and the coordinator;
+   - the ports (Fetcher, LinkExtractor, Queue, RobotsPolicy, FetchStage,
+     ParseStage) and what each seam enables;
+   - termination via the in-flight counter (and why "queues empty" is insufficient).
+
+2. **Diagrams in MermaidJS** — the ASCII diagrams in this spec are re-expressed as
+   Mermaid so they render on GitHub. At minimum:
+   - a **component/layer diagram** (`flowchart`) showing CLI → domain engine →
+     gateways and the dependency direction;
+   - a **data-flow diagram** (`flowchart`) of seed → frontier → fetch workers ×N →
+     results queue → parse loop → loop-back / output;
+   - optionally a **sequence diagram** of one page's lifecycle (fetch → robots gate
+     → parse → classify → enqueue/emit).
+   Each diagram gets a one-line caption; diagrams supplement prose, never replace it.
+
+3. **Reasoning behind the choices** — concise rationale for the decisions in this
+   spec: asyncio over threads (I/O-bound); single parse loop / single-writer state
+   (no locks); httpx + selectolax (and why each sits behind a port); ports-and-DI
+   for testability; the deliberate non-abstractions (visited set as a plain `set`).
+
+4. **Trade-offs and possible improvements** — the deliberate, time-boxed cuts and
+   the discussed future work, drawn from §2 (non-goals), §10 (evolution path to a
+   distributed crawler), and the conversation:
+   - robots.txt enforcement (currently a NoOp placeholder seam);
+   - distributed mode: external queue broker, shared `VisitedStore` (Redis), split
+     worker processes, and the distributed-termination problem;
+   - why a CLI is the wrong long-term interface and what replaces it;
+   - JS-rendered pages being out of scope (no-Playwright constraint).
+
+5. **AI-tooling disclosure** — the brief asks which IDE and AI tools were used and
+   how. Add a short "Tooling & AI usage" note (this design was developed
+   interactively with Claude Code: brainstorming → spec → plan → implementation).
+
+The README discussion and the diagrams should stay consistent with this spec and
+the scaffolding spec; where they would diverge, the **code is the source of truth**
+(per `CLAUDE.md`) and the docs are updated to match.
+
+---
+
+## 12. Non-goals (restated)
 
 robots.txt enforcement (placeholder only) · retries/backoff · JS-rendered links
 (no-Playwright limitation) · sitemap.xml · `nofollow` · crawler-trap heuristics ·
