@@ -1,8 +1,29 @@
+from collections.abc import AsyncIterator
+
+import pytest
 from typer.testing import CliRunner
 
+import crawler.cli as cli_module
 from crawler.cli import app
+from domains.crawler.models import PageResult
 
 runner = CliRunner()
+
+
+class FakeCrawler:
+    """Stands in for a real Crawler: yields preset PageResults."""
+
+    def __init__(self, pages: list[PageResult], truncated: bool = False) -> None:
+        self._pages = pages
+        self.truncated = truncated
+
+    async def crawl(self) -> AsyncIterator[PageResult]:
+        for page in self._pages:
+            yield page
+
+
+def _patch_build(monkeypatch: pytest.MonkeyPatch, crawler: FakeCrawler) -> None:
+    monkeypatch.setattr(cli_module, "build_crawler", lambda config, client: crawler)
 
 
 def test_help_lists_crawl_command() -> None:
@@ -11,8 +32,28 @@ def test_help_lists_crawl_command() -> None:
     assert "crawl" in result.stdout
 
 
-def test_crawl_stub_prints_placeholder_and_exits_nonzero() -> None:
-    result = runner.invoke(app, ["crawl", "https://example.com"])
-    assert result.exit_code == 1
-    assert "not implemented" in result.stdout
-    assert "https://example.com" in result.stdout
+def test_crawl_prints_pages_as_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [
+        PageResult(url="http://a.com/", links=("http://a.com/x",), status=200, error=None),
+    ]
+    _patch_build(monkeypatch, FakeCrawler(pages))
+    result = runner.invoke(app, ["crawl", "http://a.com/"])
+    assert result.exit_code == 0
+    assert "http://a.com/" in result.stdout
+    assert "  http://a.com/x" in result.stdout
+
+
+def test_crawl_json_outputs_jsonl(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [
+        PageResult(url="http://a.com/", links=(), status=200, error=None),
+    ]
+    _patch_build(monkeypatch, FakeCrawler(pages))
+    result = runner.invoke(app, ["crawl", "http://a.com/", "--json"])
+    assert result.exit_code == 0
+    assert '"url":"http://a.com/"' in result.stdout.replace(" ", "")
+
+
+def test_crawl_rejects_url_without_host() -> None:
+    result = runner.invoke(app, ["crawl", "not-a-url"])
+    assert result.exit_code == 2
+    assert "host" in result.output.lower()
