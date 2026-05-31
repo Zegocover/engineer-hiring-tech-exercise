@@ -23,9 +23,8 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# Enabled in Task 2 once src/crawler/ exists.
-# [tool.hatch.build.targets.wheel]
-# packages = ["src/crawler"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/crawler"]
 
 [tool.ruff]
 line-length = 100
