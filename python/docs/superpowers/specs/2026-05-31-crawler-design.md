@@ -298,6 +298,26 @@ done: the coordinator pushes one `SENTINEL` per worker into the frontier, each
 worker's `get()` returns the sentinel and the worker exits, `gather` completes,
 and the async iterator ends.
 
+**This in-process counter is a deliberate, temporary realization of a concept,
+not the end state.** The ideal model is "dispatch worker tasks, then wait until
+all are done" — what a task framework (e.g. Celery `task.delay()` + a result
+group) gives you. The catch: a crawl frontier is **dynamic and recursive** —
+every task discovers more URLs that spawn more tasks — so `group`/`chord` /
+`AsyncResult` only let you await the tasks you *explicitly* fired, not the ones
+those tasks spawn. Knowing the whole recursive crawl is finished therefore still
+requires shared completion tracking: a counter in the result backend (e.g. Redis)
+that tasks increment on dispatch and decrement on completion, with "am I the
+last?" logic. So the in-flight counter does not disappear under a task framework —
+**it moves from a process-local `int` into the backend** (see §10.4).
+
+We deliberately **do not** introduce a "task dispatcher / await-all" port now.
+That would be overengineering: the `FetchStage` and `Queue` ports are already the
+seams that map onto a Celery worker + broker, and a single dispatch/await
+abstraction cannot honestly span the in-process **centralized** model (one
+coordinator owns completion) and the distributed **decentralized** model (tasks
+recursively spawn tasks; completion lives in the backend) — it would be the
+asyncio version wearing a costume, with one real implementation.
+
 ### 4.4 max-pages
 
 The coordinator stops enqueueing once the visited count reaches `--max-pages`,
@@ -380,10 +400,17 @@ swapping adapters, not rewriting the engine:
 3. **Stages → separate workers.** `FetchStage` and `ParseStage` become
    gateway-backed implementations / separate deployable workers consuming and
    producing to the external queues.
-4. **Coordinator → frontier service.** The in-flight/visited/termination logic
-   becomes a frontier service; **distributed termination becomes a genuine
-   problem** (no single in-flight counter) and would need explicit coordination —
-   called out as future work, not solved here.
+4. **Coordinator → task framework + frontier service.** Each `FetchStage` /
+   `ParseStage` becomes a worker task (`fetch_task.delay(url)` etc.); the broker
+   is the queue. The process-local **in-flight counter relocates to the result
+   backend** as a shared counter (incremented on dispatch, decremented on
+   completion). Because the frontier is dynamic/recursive, you cannot simply
+   "await the group" — only explicitly-fired tasks are in a `group`/`chord`/
+   `ResultSet`, not the ones they spawn — so **distributed termination is a
+   genuine problem** requiring that shared counter plus "am I the last?"
+   coordination. Called out as future work, not solved here. The same applies to
+   the visited set (step 2): both pieces of coordinator state become shared
+   backend state.
 
 The CLI is acknowledged (per the brief) as the wrong long-term interface for
 multi-domain / large-scale crawling; a queue-driven service with the same domain
