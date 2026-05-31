@@ -1,92 +1,201 @@
 # crawler
 
-A command-line web crawler that walks a single domain starting from a base URL and prints every page it discovers along with the links found on each page. Cross-domain and subdomain links are listed but not followed.
-
-The original exercise brief is preserved in [`test_instructions.md`](./test_instructions.md).
+A single-domain web crawler exposed as a `crawler` command-line tool. Given a
+starting URL it visits every page **within that domain**, printing each page and
+the links found on it. Links to other domains — and to subdomains — are listed
+but never followed.
 
 ## Requirements
 
-- [`uv`](https://docs.astral.sh/uv/) (handles Python install, virtualenv, and dependency resolution)
-- Python 3.13 (uv will fetch it automatically if missing)
-- Optional: Docker, for running the containerised build
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) for environment and dependency management
 
-No system-wide `pip` or `virtualenv` is required.
-
-## Quick start
+## Quickstart
 
 ```bash
-uv sync
-uv run crawler crawl https://example.com
-```
-
-Or via the Makefile, which is the canonical task interface:
-
-```bash
+# Install dependencies into a local .venv
 make install
+
+# Run the test/lint/type-check gate
+make check
+
+# Invoke the CLI
+make run ARGS="--help"
+```
+
+## Usage
+
+```bash
+crawler crawl URL [OPTIONS]
+```
+
+Crawl `URL` within its own domain and print each discovered page with the links
+on it.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--concurrency N` | `10` | Number of concurrent fetch workers. |
+| `--timeout SECONDS` | `10.0` | Per-request timeout. |
+| `--max-pages N` | unlimited | Stop after crawling `N` pages. |
+| `--json` | off | Emit one JSON object per page (JSONL) instead of text. |
+
+Examples:
+
+```bash
+# Human-readable: each page URL, then its links indented beneath it
 make run ARGS="crawl https://example.com"
+
+# Cap the crawl and stream JSONL (one compact object per line) for piping
+make run ARGS="crawl https://example.com --json --max-pages 50"
+
+# Turn up concurrency for a larger site
+make run ARGS="crawl https://example.com --concurrency 25"
 ```
 
-Show all options:
+**Output.** In text mode each page prints its URL on one line with every link
+indented two spaces beneath; a page that failed prints as
+`URL  [error: message]`. In `--json` mode each page is one compact JSON object
+with `url`, `links`, `status`, and `error` keys. Page results stream to **stdout**
+as they are crawled; operational notices (e.g. a `--max-pages` truncation notice)
+go to **stderr**, so piping stdout stays clean. A seed that is not an `http`/`https`
+URL with a host exits with code `2`.
 
-```bash
-uv run crawler --help
-uv run crawler crawl --help
+## Architecture & design
+
+The crawler follows a Clean Architecture split across three layers, with all
+dependencies pointing inward toward a pure domain core.
+
+```mermaid
+flowchart TD
+    CLI["src/crawler<br/>CLI · composition root · output"]
+    DOM["src/domains/crawler<br/>engine · stages · ports · models · urls"]
+    GW["src/gateways<br/>httpx fetcher · selectolax extractor · in-memory queue"]
+    CLI --> DOM
+    GW --> DOM
+    CLI --> GW
 ```
 
-## Running in Docker
+- **`src/domains/crawler`** — the pure inner core: the `engine` coordinator, the
+  fetch and parse `stages`, the `ports` (Protocols), the frozen `models`, URL
+  logic, and the robots placeholder. It imports only the standard library.
+- **`src/gateways`** — outward adapters that implement the domain ports: an httpx
+  fetcher, a selectolax link extractor, and an in-memory queue.
+- **`src/crawler`** — the CLI composition root: the Typer app, the `build_crawler`
+  wiring, and the text/JSONL output renderers.
 
-```bash
-make docker-build
-make docker-run ARGS="crawl https://example.com"
+The domain core depends on nothing outward; the CLI and gateways depend on the
+domain's ports. A test (`tests/test_architecture.py`) AST-scans the domain and
+fails the build if it ever imports a third-party library or an outer layer, so
+the boundary cannot silently rot.
+
+### Crawl pipeline
+
+Two stages joined by two queues, driven by a single coordinator. N fetch workers
+run concurrently (the workload is I/O-bound); one parse loop owns all shared
+state, so no locks are needed.
+
+```mermaid
+flowchart LR
+    seed["seed URL"] --> FR["frontier queue"]
+    FR --> FW["fetch workers ×N<br/>(robots gate → httpx)"]
+    FW --> RQ["results queue<br/>(HTML)"]
+    RQ --> PL["parse loop ×1<br/>(extract → normalize → classify)"]
+    PL -->|on-host, unseen| FR
+    PL -->|every page| OUT["stdout (text / JSONL)"]
 ```
 
-The image is multi-stage and runs as a non-root user. Only runtime dependencies are installed in the final layer.
+**Completion.** The coordinator tracks an in-flight counter — incremented when a
+URL is enqueued, decremented after its HTML has been parsed. The crawl is done
+when that counter reaches zero, *not* when the queues look empty (checking "queues
+empty" would exit early while a worker is still mid-fetch). Once it hits zero
+every worker is provably idle, blocked on `frontier.get()`, so shutdown is a
+clean task cancellation — no sentinel values threading through the queues.
 
-## Development
+### Design decisions
 
-| Task | Command |
-| --- | --- |
-| Install / sync deps | `make install` |
-| Auto-fix formatting and lint | `make fix` |
-| Verify everything (CI gate) | `make check` |
-| Run tests only | `make test` |
-| Type-check only | `make typecheck` |
-| Lint only | `make lint` |
+- **asyncio over threads.** The work is almost entirely waiting on HTTP, the
+  canonical fit for asyncio. One shared `httpx.AsyncClient` pools connections
+  across the whole crawl.
+- **N fetch workers, one parse loop.** asyncio is single-threaded, so parsing is
+  serialized regardless of how it is structured. Making the parse loop the *only*
+  writer of the `visited` set and the in-flight counter removes the need for any
+  locking — the concurrency is confined to the fetch fan-out, where it actually
+  helps.
+- **Ports + manual dependency injection.** Every I/O boundary (`Fetcher`,
+  `LinkExtractor`, `Queue`, `RobotsPolicy`) is a `typing.Protocol` defined in the
+  domain. The engine is tested end-to-end with zero network using fakes, and the
+  HTML parser, HTTP client, and queue are each swappable without touching the
+  core. Wiring is a few lines in `build_crawler`; an exercise this size does not
+  need a DI framework.
+- **selectolax + httpx.** Chosen for speed and a clean async API. Each sits behind
+  a port, so a different parser or client is a one-file change.
+- **Deliberate non-abstractions.** The `visited` set stays a plain `set` — it is
+  single-writer and inseparable from the in-process completion logic, so a port
+  around it would be ceremony. The bias throughout is toward minimal cognitive
+  complexity over speculative generality.
 
-`make check` runs `format-check`, `lint`, `typecheck`, and `test` — it is non-mutating and is the gate that must pass before pushing.
+### Trade-offs & future work
 
-`make fix` runs `ruff format`, then `ruff check --fix`, then `ruff format` again. The second format pass is intentional: the lint auto-fix can reorder imports (via the `I` rule), which can leave the file in a not-quite-formatted state.
+- **robots.txt is a NoOp placeholder.** `NoOpRobotsPolicy` currently allows every
+  URL. The seam is real — the `RobotsPolicy` port is already applied in the fetch
+  stage — but a production crawler must fetch, cache, and honor each origin's
+  `/robots.txt` (Disallow rules and Crawl-delay, deny on parse failure) before
+  running against third-party sites.
+- **JS-rendered links are out of scope.** The brief forbids Scrapy and Playwright,
+  so links injected by client-side JavaScript are not seen. This is a stated
+  limitation, not an oversight.
+- **`max_bytes` bounds stored body size, not transfer.** The full response is
+  downloaded before the size is checked, so the cap limits the HTML retained in
+  memory rather than bytes over the wire — a deliberate simplification.
+- **URL credentials are dropped.** `user:pass@host` userinfo is stripped during
+  normalization (from both the canonical URL and the host used for same-host
+  matching). Fine for crawling; noted for completeness.
+- **Distributed evolution.** The seams make a distributed version a swap rather
+  than a rewrite: replace the in-memory `Queue` with Kafka/SQS, promote the
+  `visited` set to a shared store (e.g. Redis `SADD`), and split fetch and parse
+  into separate worker processes. At that point the in-flight counter relocates
+  to a shared backend counter and **distributed termination becomes a genuinely
+  harder problem** — a recursive frontier can no longer be awaited as a fixed task
+  group. A CLI is also the wrong long-term interface for large-scale or
+  multi-domain crawling; a queue-driven service reusing the same domain core is
+  the direction.
 
-## Design rationale
+### Tooling & AI usage
 
-### Tooling: the Astral stack on top of `uv`
+This exercise was developed with the Claude Code CLI in an IDE, following a
+brainstorm → spec → plan → TDD-implementation workflow. The design spec and the
+step-by-step implementation plan live under `docs/superpowers/`.
 
-The project leans on a coherent, fast, single-vendor toolchain wherever possible:
+## Project layout
 
-- **`uv`** for environment and dependency management. It's an order of magnitude faster than `pip` + `venv`, resolves and locks in one step, manages the Python interpreter version, and supports PEP 735 dependency groups so dev tooling lives in `pyproject.toml` rather than a separate `requirements-dev.txt`.
-- **`ruff`** for both formatting and linting. One tool, one config block, one cache — replacing the historic `black` + `isort` + `flake8` + `pyupgrade` stack with something that runs in milliseconds.
-- **`ty`** for type checking. It's still pre-1.0 but is dramatically faster than `mypy` on cold runs and integrates cleanly with the same `pyproject.toml`-driven configuration.
+```
+python/
+├── src/
+│   ├── crawler/                 # CLI / composition root (outer layer)
+│   │   ├── cli.py               # Typer app; the `crawl` command
+│   │   ├── builder.py           # wires gateways + stages into a Crawler
+│   │   ├── output.py            # PageResult → text / JSONL
+│   │   └── __main__.py          # enables `python -m crawler`
+│   ├── domains/crawler/         # pure domain core (stdlib only)
+│   │   ├── engine.py            # the async crawl coordinator
+│   │   ├── stages/              # fetch stage (robots gate) + parse stage
+│   │   ├── ports.py             # Protocols: Fetcher, LinkExtractor, Queue, …
+│   │   ├── models.py            # frozen dataclasses
+│   │   ├── urls.py              # normalize / extract_host / same_host
+│   │   └── robots.py            # NoOpRobotsPolicy placeholder
+│   └── gateways/                # adapters (outer layer)
+│       ├── http/                # httpx fetcher
+│       ├── parsing/             # selectolax link extractor
+│       └── memory/              # in-memory asyncio.Queue adapter
+├── tests/                       # pytest suite (outside the package)
+└── pyproject.toml               # project metadata, deps, and tool config
+```
 
-Choosing tools from the same vendor reduces config drift and version-compatibility friction. Where `ty` is not yet stable enough for a given workflow, swapping in `mypy` would be a one-line change in the dev dependency group.
+## Design notes
 
-### CLI: Typer with async via `asyncer`
-
-**Typer** was chosen over `argparse` and `click` because it derives the CLI surface directly from type hints. The function signature *is* the schema — argument names, types, defaults, and help text all come from one source — which keeps the CLI implementation small and removes a class of "schema drifted from implementation" bugs.
-
-Typer does not natively run `async def` commands. Two clean options exist: wrap each command body in `asyncio.run(...)` manually, or use `asyncer.runnify`, a decorator from the same author as Typer and FastAPI. `runnify` was preferred because it keeps the command body genuinely `async def` (so the same function can be reused from other async contexts) and removes the boilerplate `asyncio.run` wrapper at every command.
-
-### Concurrency model: asyncio
-
-The crawler is I/O-bound — almost all of its time is spent waiting on HTTP responses — which is the canonical fit for `asyncio`. A thread pool would also work, but `asyncio` gives explicit, structured concurrency (`asyncio.gather`, `asyncio.Semaphore` for politeness limits, `asyncio.Queue` for work distribution) without the overhead of OS threads or the indirection of a thread pool. Using `async` from the entry point also means there is no sync/async boundary buried inside the call graph.
-
-### Testing: pytest with `asyncio_mode = "auto"`
-
-**pytest** is the de-facto standard and integrates with everything else here. The `pytest-asyncio` plugin is configured with `asyncio_mode = "auto"`, so any `async def test_*` function is treated as an async test automatically. This removes the per-test `@pytest.mark.asyncio` decorator noise and keeps async-by-default test code aligned with the async-by-default application code.
-
-### Python 3.13
-
-The newest stable Python at the time of writing. It is fully supported by uv, ruff, ty, Typer, and asyncer, and it brings meaningful improvements to error messages and the asyncio runtime. The version is pinned in `.python-version` so contributors and Docker builds resolve the same interpreter automatically.
-
-### Packaging: `src/` layout
-
-The application package lives under `src/crawler/` rather than at the repository root. This prevents accidental imports from the current working directory (a common source of "works on my machine" bugs where tests pass against the source tree rather than against the installed package), and it ensures the package is exercised the same way in tests, in local runs, and in the Docker image.
+- **`src/` layout** keeps imports honest: tests run against the installed
+  package, not loose modules on `sys.path`.
+- **Typer** gives a typed CLI with minimal boilerplate; the function signature
+  *is* the command schema.
+- **`asyncer.runnify`** bridges Typer's sync command callback to the async crawler
+  core without scattering `asyncio.run` calls.
