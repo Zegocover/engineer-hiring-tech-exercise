@@ -28,7 +28,8 @@ run:
 	uv run crawler $(ARGS)
 
 clean:
-	rm -rf .venv .pytest_cache .ruff_cache dist build *.egg-info
+	rm -rf .venv .pytest_cache .ruff_cache .mypy_cache .ty_cache dist build *.egg-info
+	find . -type d -name __pycache__ -not -path "./.venv/*" -exec rm -rf {} +
 
 docker-build:
 	docker build -t crawler:dev .
