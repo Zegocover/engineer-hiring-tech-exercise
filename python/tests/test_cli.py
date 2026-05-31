@@ -57,3 +57,17 @@ def test_crawl_rejects_url_without_host() -> None:
     result = runner.invoke(app, ["crawl", "not-a-url"])
     assert result.exit_code == 2
     assert "host" in result.output.lower()
+
+
+def test_crawl_rejects_non_http_scheme() -> None:
+    result = runner.invoke(app, ["crawl", "ftp://example.com/"])
+    assert result.exit_code == 2
+    assert "http" in result.output.lower()
+
+
+def test_crawl_prints_truncation_notice(monkeypatch: pytest.MonkeyPatch) -> None:
+    pages = [PageResult(url="http://a.com/", links=(), status=200, error=None)]
+    _patch_build(monkeypatch, FakeCrawler(pages, truncated=True))
+    result = runner.invoke(app, ["crawl", "http://a.com/", "--max-pages", "1"])
+    assert result.exit_code == 0
+    assert "max-pages" in result.output

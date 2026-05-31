@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 import httpx
 import typer
 from asyncer import runnify
@@ -29,8 +31,8 @@ async def crawl(
 ) -> None:
     """Crawl URL within its own domain and print discovered links."""
     host = extract_host(url)
-    if not host:
-        typer.echo(f"error: '{url}' has no host to crawl", err=True)
+    if urlsplit(url).scheme not in {"http", "https"} or not host:
+        typer.echo(f"error: '{url}' must be an http or https URL with a host", err=True)
         raise typer.Exit(code=2)
 
     config = CrawlConfig(
@@ -48,6 +50,5 @@ async def crawl(
         crawler = build_crawler(config, client)
         async for page in crawler.crawl():
             typer.echo(render(page))
-
-    if getattr(crawler, "truncated", False):
-        typer.echo(f"notice: stopped at max-pages={max_pages}", err=True)
+        if getattr(crawler, "truncated", False):
+            typer.echo(f"notice: stopped at max-pages={max_pages}", err=True)
