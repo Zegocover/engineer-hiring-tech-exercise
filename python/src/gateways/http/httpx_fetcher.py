@@ -29,7 +29,9 @@ class HttpxFetcher:
             )
 
         content_type = response.headers.get("content-type")
-        is_html = content_type is not None and content_type.startswith(_HTML_TYPE)
+        # Media types are case-insensitive (RFC 7231), so a server sending
+        # "Text/HTML" must still count as HTML. Compare lowercased; store original.
+        is_html = content_type is not None and content_type.lower().startswith(_HTML_TYPE)
         body = response.text if is_html and len(response.content) <= self._max_bytes else None
         return FetchResult(
             requested_url=url,

@@ -70,3 +70,27 @@ async def test_network_error_becomes_error_result(httpx_mock: HTTPXMock) -> None
     assert result.status is None
     assert result.html is None
     assert result.error is not None
+
+
+async def test_uppercase_content_type_is_treated_as_html(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url="http://a.com/p",
+        html="<html><a href='/x'>x</a></html>",
+        headers={"content-type": "Text/HTML; charset=utf-8"},
+    )
+    async with httpx.AsyncClient() as client:
+        result = await HttpxFetcher(client).fetch("http://a.com/p")
+    assert result.html is not None
+    assert result.content_type == "Text/HTML; charset=utf-8"  # original casing preserved
+
+
+async def test_oversized_body_is_dropped(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url="http://a.com/big",
+        html="<html>" + "x" * 100 + "</html>",
+        headers={"content-type": "text/html"},
+    )
+    async with httpx.AsyncClient() as client:
+        result = await HttpxFetcher(client, max_bytes=10).fetch("http://a.com/big")
+    assert result.status == 200
+    assert result.html is None
