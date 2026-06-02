@@ -1,7 +1,7 @@
 import httpx
 from pytest_httpx import HTTPXMock
 
-from crawler.builder import build_crawler
+from crawler.factory import crawler_factory
 from domains.crawler.models import CrawlConfig, PageResult
 
 
@@ -20,7 +20,7 @@ async def test_real_stack_crawls_small_site(httpx_mock: HTTPXMock) -> None:
     config = CrawlConfig(seed_url="http://site.test/", seed_host="site.test")
     pages: dict[str, PageResult] = {}
     async with httpx.AsyncClient() as client:
-        crawler = build_crawler(config, client)
+        crawler = crawler_factory(config, client)
         async for page in crawler.crawl():
             pages[page.url] = page
 

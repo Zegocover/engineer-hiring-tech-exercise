@@ -16,8 +16,8 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from crawler.builder import build_crawler
-from crawler.output import format_jsonl, format_text
+from crawler.factory import crawler_factory
+from crawler.presenters import format_jsonl, format_text
 from domains.crawler.models import CrawlConfig, PageResult
 
 SITES = Path(__file__).parent / "sites"
@@ -51,7 +51,7 @@ async def _crawl(config: CrawlConfig) -> tuple[dict[str, PageResult], bool]:
     """Run a full crawl and collect the pages keyed by URL, plus the truncated flag."""
     pages: dict[str, PageResult] = {}
     async with httpx.AsyncClient() as client:
-        crawler = build_crawler(config, client)
+        crawler = crawler_factory(config, client)
         async for page in crawler.crawl():
             pages[page.url] = page
         return pages, crawler.truncated

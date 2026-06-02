@@ -4,8 +4,8 @@ import httpx
 import typer
 from asyncer import runnify
 
-from crawler.builder import build_crawler
-from crawler.output import format_jsonl, format_text
+from crawler.factory import crawler_factory
+from crawler.presenters import format_jsonl, format_text
 from domains.crawler.models import CrawlConfig
 from domains.crawler.urls import extract_host
 
@@ -47,7 +47,7 @@ async def crawl(
     timeout_cfg = httpx.Timeout(timeout)
     headers = {"user-agent": config.user_agent}
     async with httpx.AsyncClient(timeout=timeout_cfg, headers=headers) as client:
-        crawler = build_crawler(config, client)
+        crawler = crawler_factory(config, client)
         async for page in crawler.crawl():
             typer.echo(render(page))
         if getattr(crawler, "truncated", False):

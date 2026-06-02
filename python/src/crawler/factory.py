@@ -13,8 +13,9 @@ from gateways.memory.queue import InMemoryQueue
 from gateways.parsing.selectolax_extractor import SelectolaxExtractor
 
 
-def build_crawler(config: CrawlConfig, client: httpx.AsyncClient) -> Crawler:
+def crawler_factory(config: CrawlConfig, client: httpx.AsyncClient) -> Crawler:
     """Wire the real gateways + default stages into a Crawler."""
+    # This could be done with a DI framework, but we're keeping it simple here.
     fetcher = HttpxFetcher(client, max_bytes=config.max_bytes)
     fetch_stage = DefaultFetchStage(fetcher=fetcher, robots=NoOpRobotsPolicy())
     parse_stage = DefaultParseStage(extractor=SelectolaxExtractor(), seed_host=config.seed_host)

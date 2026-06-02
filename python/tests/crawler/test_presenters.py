@@ -1,6 +1,6 @@
 import json
 
-from crawler.output import format_jsonl, format_text
+from crawler.presenters import format_jsonl, format_text
 from domains.crawler.models import PageResult
 
 
