@@ -68,36 +68,38 @@ dependencies pointing inward toward a pure domain core.
 ```mermaid
 flowchart TD
     CLI["src/crawler<br/>CLI · composition root · output"]
-    DOM["src/domains/crawler<br/>engine · stages · ports · models · urls"]
-    GW["src/gateways<br/>httpx fetcher · selectolax extractor · in-memory queue"]
+    DOM["src/domains/crawler<br/>engine · stages · extractor · ports · models · urls"]
+    GW["src/gateways<br/>httpx fetcher · in-memory queue"]
     CLI --> DOM
     GW --> DOM
     CLI --> GW
 ```
 
-- **`src/domains/crawler`** — the pure inner core: the `engine` coordinator, the
-  fetch and parse `stages`, the `ports` (Protocols), the frozen `models`, URL
-  logic, and the robots placeholder. It imports only the standard library.
+- **`src/domains/crawler`** — the inner core: the `engine` coordinator, the parse
+  `stage`, the link `extractor`, the `ports` (Protocols), the frozen `models`, and
+  URL logic. It performs no I/O — it uses selectolax purely for in-process HTML
+  parsing, but makes no network or filesystem calls.
 - **`src/gateways`** — outward adapters that implement the domain ports: an httpx
-  fetcher, a selectolax link extractor, and an in-memory queue.
-- **`src/crawler`** — the CLI composition root: the Typer app, the `build_crawler`
+  fetcher and an in-memory queue.
+- **`src/crawler`** — the CLI composition root: the Typer app, the `crawler_factory`
   wiring, and the text/JSONL output renderers.
 
 The domain core depends on nothing outward; the CLI and gateways depend on the
 domain's ports. A test (`tests/test_architecture.py`) AST-scans the domain and
-fails the build if it ever imports a third-party library or an outer layer, so
-the boundary cannot silently rot.
+fails the build if it ever imports an I/O or framework library (httpx, typer,
+asyncer) or an outer layer (`crawler`, `gateways`), so the boundary cannot
+silently rot. A pure parsing library (selectolax) is allowed: it does no I/O.
 
 ### Crawl pipeline
 
-Two stages joined by two queues, driven by a single coordinator. N fetch workers
+A fetch fan-out feeding a single parse loop, joined by two queues. N fetch workers
 run concurrently (the workload is I/O-bound); one parse loop owns all shared
 state, so no locks are needed.
 
 ```mermaid
 flowchart LR
     seed["seed URL"] --> FR["frontier queue"]
-    FR --> FW["fetch workers ×N<br/>(robots gate → httpx)"]
+    FR --> FW["fetch workers ×N<br/>(httpx fetch)"]
     FW --> RQ["results queue<br/>(HTML)"]
     RQ --> PL["parse loop ×1<br/>(extract → normalize → classify)"]
     PL -->|on-host, unseen| FR
@@ -121,14 +123,16 @@ clean task cancellation — no sentinel values threading through the queues.
   writer of the `visited` set and the in-flight counter removes the need for any
   locking — the concurrency is confined to the fetch fan-out, where it actually
   helps.
-- **Ports + manual dependency injection.** Every I/O boundary (`Fetcher`,
-  `LinkExtractor`, `Queue`, `RobotsPolicy`) is a `typing.Protocol` defined in the
-  domain. The engine is tested end-to-end with zero network using fakes, and the
-  HTML parser, HTTP client, and queue are each swappable without touching the
-  core. Wiring is a few lines in `build_crawler`; an exercise this size does not
-  need a DI framework.
-- **selectolax + httpx.** Chosen for speed and a clean async API. Each sits behind
-  a port, so a different parser or client is a one-file change.
+- **Ports for external seams only.** The two genuine I/O boundaries — `Fetcher`
+  (HTTP) and `Queue` (transport) — are `typing.Protocol`s defined in the domain,
+  so the HTTP client and queue are each swappable and the engine is tested
+  end-to-end with zero network using fakes. Link extraction is a pure in-domain
+  transform used concretely, not behind a port — no interface is introduced until
+  a second implementation exists. Wiring is a few lines in `crawler_factory`; an
+  exercise this size does not need a DI framework.
+- **selectolax + httpx.** Chosen for speed and a clean async API. httpx sits
+  behind the `Fetcher` port (a different client is a one-file change); selectolax
+  is used directly inside the parse stage as the link-extraction strategy.
 - **Deliberate non-abstractions.** The `visited` set stays a plain `set` — it is
   single-writer and inseparable from the in-process completion logic, so a port
   around it would be ceremony. The bias throughout is toward minimal cognitive
@@ -136,11 +140,12 @@ clean task cancellation — no sentinel values threading through the queues.
 
 ### Trade-offs & future work
 
-- **robots.txt is a NoOp placeholder.** `NoOpRobotsPolicy` currently allows every
-  URL. The seam is real — the `RobotsPolicy` port is already applied in the fetch
-  stage — but a production crawler must fetch, cache, and honor each origin's
-  `/robots.txt` (Disallow rules and Crawl-delay, deny on parse failure) before
-  running against third-party sites.
+- **robots.txt is not implemented (future work).** There is no robots handling
+  today. A production crawler must fetch, cache, and honor each origin's
+  `/robots.txt` — Disallow rules and Crawl-delay, denying on parse failure —
+  before running against third-party sites. This was deliberately left out rather
+  than stubbed behind a guessed interface; the gate would be reintroduced (likely
+  in the fetcher or a dedicated stage) when the real policy is built.
 - **JS-rendered links are out of scope.** The brief forbids Scrapy and Playwright,
   so links injected by client-side JavaScript are not seen. This is a stated
   limitation, not an oversight.
@@ -173,19 +178,18 @@ python/
 ├── src/
 │   ├── crawler/                 # CLI / composition root (outer layer)
 │   │   ├── cli.py               # Typer app; the `crawl` command
-│   │   ├── builder.py           # wires gateways + stages into a Crawler
-│   │   ├── output.py            # PageResult → text / JSONL
+│   │   ├── factory.py           # wires the fetcher + queues into a Crawler
+│   │   ├── presenters.py        # PageResult → text / JSONL
 │   │   └── __main__.py          # enables `python -m crawler`
-│   ├── domains/crawler/         # pure domain core (stdlib only)
+│   ├── domains/crawler/         # domain core (no I/O)
 │   │   ├── engine.py            # the async crawl coordinator
-│   │   ├── stages/              # fetch stage (robots gate) + parse stage
-│   │   ├── ports.py             # Protocols: Fetcher, LinkExtractor, Queue, …
+│   │   ├── stages/              # parse stage (extract → normalize → classify)
+│   │   ├── extractor.py         # selectolax link extractor
+│   │   ├── ports.py             # Protocols: Fetcher, Queue
 │   │   ├── models.py            # frozen dataclasses
-│   │   ├── urls.py              # normalize / extract_host / same_host
-│   │   └── robots.py            # NoOpRobotsPolicy placeholder
+│   │   └── urls.py              # normalize / extract_host / same_host
 │   └── gateways/                # adapters (outer layer)
 │       ├── http/                # httpx fetcher
-│       ├── parsing/             # selectolax link extractor
 │       └── memory/              # in-memory asyncio.Queue adapter
 ├── tests/                       # pytest suite (outside the package)
 └── pyproject.toml               # project metadata, deps, and tool config
