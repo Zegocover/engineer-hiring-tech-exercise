@@ -23,7 +23,7 @@ class FakeCrawler:
 
 
 def _patch_build(monkeypatch: pytest.MonkeyPatch, crawler: FakeCrawler) -> None:
-    monkeypatch.setattr(cli_module, "build_crawler", lambda config, client: crawler)
+    monkeypatch.setattr(cli_module, "crawler_factory", lambda config, client: crawler)
 
 
 def test_help_lists_crawl_command() -> None:
