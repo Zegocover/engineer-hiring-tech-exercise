@@ -1,8 +1,5 @@
 from domains.crawler.engine import Crawler
 from domains.crawler.models import CrawlConfig, FetchResult
-from domains.crawler.robots import NoOpRobotsPolicy
-from domains.crawler.stages.fetch_stage import DefaultFetchStage
-from domains.crawler.stages.parse_stage import DefaultParseStage
 from gateways.memory.queue import InMemoryQueue
 
 
@@ -34,12 +31,9 @@ class FakeFetcher:
 
 def _build(pages: dict[str, str], seed: str, max_pages: int | None = None) -> Crawler:
     config = CrawlConfig(seed_url=seed, seed_host="a.com", concurrency=3, max_pages=max_pages)
-    fetch_stage = DefaultFetchStage(fetcher=FakeFetcher(pages), robots=NoOpRobotsPolicy())
-    parse_stage = DefaultParseStage(seed_host="a.com")
     return Crawler(
         config=config,
-        fetch_stage=fetch_stage,
-        parse_stage=parse_stage,
+        fetcher=FakeFetcher(pages),
         frontier=InMemoryQueue(),
         results=InMemoryQueue(),
     )

@@ -6,7 +6,8 @@ import asyncio
 from collections.abc import AsyncIterator
 
 from domains.crawler.models import CrawlConfig, FetchResult, PageResult
-from domains.crawler.ports import FetchStage, ParseStage, Queue
+from domains.crawler.ports import Fetcher, Queue
+from domains.crawler.stages.parse_stage import DefaultParseStage
 
 
 class Crawler:
@@ -22,14 +23,13 @@ class Crawler:
     def __init__(
         self,
         config: CrawlConfig,
-        fetch_stage: FetchStage,
-        parse_stage: ParseStage,
+        fetcher: Fetcher,
         frontier: Queue[str],
         results: Queue[FetchResult],
     ) -> None:
         self._config = config
-        self._fetch_stage = fetch_stage
-        self._parse_stage = parse_stage
+        self._fetcher = fetcher
+        self._parse_stage = DefaultParseStage(config.seed_host)
         self._frontier = frontier
         self._results = results
         self._visited: set[str] = set()
@@ -83,7 +83,7 @@ class Crawler:
     async def _worker(self) -> None:
         while True:
             url = await self._frontier.get()
-            result = await self._fetch_stage.fetch(url)
+            result = await self._fetcher.fetch(url)
             await self._results.put(result)
 
     async def _stop_workers(self, workers: list[asyncio.Task[None]]) -> None:

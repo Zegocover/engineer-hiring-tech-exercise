@@ -8,9 +8,6 @@ def test_ports_are_protocols() -> None:
     for name in (
         "Fetcher",
         "Queue",
-        "RobotsPolicy",
-        "FetchStage",
-        "ParseStage",
     ):
         cls = getattr(ports, name)
         assert getattr(cls, "_is_protocol", False), f"{name} is not a Protocol"
