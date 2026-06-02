@@ -1,4 +1,4 @@
-"""Stage 2: turn a FetchResult into a PageResult + on-host enqueue candidates."""
+"""Parse stage: turn a FetchResult into a PageResult + on-host enqueue candidates."""
 
 from domains.crawler.extractor import SelectolaxExtractor
 from domains.crawler.models import FetchResult, PageResult, ParseOutcome

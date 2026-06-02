@@ -68,7 +68,7 @@ dependencies pointing inward toward a pure domain core.
 ```mermaid
 flowchart TD
     CLI["src/crawler<br/>CLI · composition root · output"]
-    DOM["src/domains/crawler<br/>engine · stages · extractor · ports · models · urls"]
+    DOM["src/domains/crawler<br/>engine · stage · extractor · ports · models · urls"]
     GW["src/gateways<br/>httpx fetcher · in-memory queue"]
     CLI --> DOM
     GW --> DOM

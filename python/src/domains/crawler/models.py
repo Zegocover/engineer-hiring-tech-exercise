@@ -1,4 +1,4 @@
-"""Immutable data passed between crawler stages. No I/O, no behavior."""
+"""Immutable data passed through the crawl pipeline. No I/O, no behavior."""
 
 from dataclasses import dataclass
 
@@ -35,7 +35,7 @@ class ParseOutcome:
 
 @dataclass(frozen=True, slots=True)
 class CrawlConfig:
-    """Everything the engine and stages need to run one crawl."""
+    """Everything the engine and parse stage need to run one crawl."""
 
     seed_url: str
     seed_host: str
