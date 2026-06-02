@@ -14,13 +14,6 @@ class Fetcher(Protocol):
 
 
 @runtime_checkable
-class LinkExtractor(Protocol):
-    """Extract link URLs from HTML. Sync + pure; swappable scraper (gateway)."""
-
-    def extract(self, html: str, base_url: str) -> list[str]: ...
-
-
-@runtime_checkable
 class Queue[T](Protocol):
     """Minimal generic message queue. In-memory now; broker (Kafka/SQS) later."""
 

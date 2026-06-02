@@ -2,7 +2,7 @@ import ast
 import pathlib
 
 _DOMAIN_DIR = pathlib.Path(__file__).parent.parent / "src" / "domains"
-_FORBIDDEN_PREFIXES = ("httpx", "selectolax", "typer", "asyncer", "crawler", "gateways")
+_FORBIDDEN_PREFIXES = ("httpx", "typer", "asyncer", "crawler", "gateways")
 
 
 def _imported_modules(path: pathlib.Path) -> set[str]:

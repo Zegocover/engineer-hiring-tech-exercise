@@ -7,7 +7,6 @@ def test_ports_are_protocols() -> None:
     # Every port is a typing.Protocol subclass (has the protocol marker).
     for name in (
         "Fetcher",
-        "LinkExtractor",
         "Queue",
         "RobotsPolicy",
         "FetchStage",

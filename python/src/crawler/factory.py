@@ -10,7 +10,6 @@ from domains.crawler.stages.fetch_stage import DefaultFetchStage
 from domains.crawler.stages.parse_stage import DefaultParseStage
 from gateways.http.httpx_fetcher import HttpxFetcher
 from gateways.memory.queue import InMemoryQueue
-from gateways.parsing.selectolax_extractor import SelectolaxExtractor
 
 
 def crawler_factory(config: CrawlConfig, client: httpx.AsyncClient) -> Crawler:
@@ -18,7 +17,7 @@ def crawler_factory(config: CrawlConfig, client: httpx.AsyncClient) -> Crawler:
     # This could be done with a DI framework, but we're keeping it simple here.
     fetcher = HttpxFetcher(client, max_bytes=config.max_bytes)
     fetch_stage = DefaultFetchStage(fetcher=fetcher, robots=NoOpRobotsPolicy())
-    parse_stage = DefaultParseStage(extractor=SelectolaxExtractor(), seed_host=config.seed_host)
+    parse_stage = DefaultParseStage(seed_host=config.seed_host)
     # Annotate the locals so the generic queue type is inferred for `ty`.
     frontier: Queue[str] = InMemoryQueue()
     results: Queue[FetchResult] = InMemoryQueue()

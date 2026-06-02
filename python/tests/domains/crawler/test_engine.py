@@ -32,19 +32,10 @@ class FakeFetcher:
         )
 
 
-class RealishExtractor:
-    """Tiny href extractor good enough for tests: pulls href="..." values."""
-
-    def extract(self, html: str, base_url: str) -> list[str]:
-        import re
-
-        return re.findall(r'href="([^"]+)"', html)
-
-
 def _build(pages: dict[str, str], seed: str, max_pages: int | None = None) -> Crawler:
     config = CrawlConfig(seed_url=seed, seed_host="a.com", concurrency=3, max_pages=max_pages)
     fetch_stage = DefaultFetchStage(fetcher=FakeFetcher(pages), robots=NoOpRobotsPolicy())
-    parse_stage = DefaultParseStage(extractor=RealishExtractor(), seed_host="a.com")
+    parse_stage = DefaultParseStage(seed_host="a.com")
     return Crawler(
         config=config,
         fetch_stage=fetch_stage,

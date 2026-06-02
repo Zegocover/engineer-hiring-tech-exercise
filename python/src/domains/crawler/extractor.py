@@ -1,8 +1,14 @@
-"""LinkExtractor port implemented with selectolax (fast, lenient HTML parsing).
+"""SelectolaxExtractor: pull navigation hrefs from HTML (fast, lenient parsing).
+
+This is a pure, in-process transformation — no network, no filesystem — so it is
+domain logic, not a gateway. It is strategy-shaped (a different parser could
+replace it) but is used concretely; no port is defined for it until a second
+implementation actually exists.
 
 Pulls href from <a>, <area>, and <link>. If the document declares a <base href>,
 relative hrefs are resolved against it here (a <base> overrides the page URL, so
-the parse stage cannot do this on its own)."""
+the parse stage cannot do this on its own). Page-relative resolution for the
+common no-<base> case happens downstream in urls.normalize()."""
 
 from urllib.parse import urljoin
 
@@ -14,7 +20,7 @@ _HREF_TAGS = ("a", "area", "link")
 class SelectolaxExtractor:
     """Extract navigation hrefs from HTML using selectolax."""
 
-    def extract(self, html: str, base_url: str) -> list[str]:
+    def extract(self, html: str) -> list[str]:
         tree = HTMLParser(html)
         base = self._base_href(tree)
         hrefs: list[str] = []
