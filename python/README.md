@@ -161,7 +161,10 @@ clean task cancellation — no sentinel values threading through the queues.
   home page, shared navigation, static assets, etc.) is printed once for every
   page that references it. Cross-page deduplication of the output was not a
   requirement and was intentionally left out — each page's link list stands on
-  its own.
+  its own. Normalization also treats a trailing slash as significant:
+  `http://a.com/foo` and `http://a.com/foo/` are kept as distinct links, since
+  they are technically different resources and a server may return different
+  content for each (only an empty root path is canonicalized to `/`).
 - **Distributed evolution.** The seams make a distributed version a swap rather
   than a rewrite: replace the in-memory `Queue` with Kafka/SQS, promote the
   `visited` set to a shared store (e.g. Redis `SADD`), and split fetch and parse
