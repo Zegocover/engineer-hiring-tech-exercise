@@ -34,8 +34,8 @@ def _build(pages: dict[str, str], seed: str, max_pages: int | None = None) -> Cr
     return Crawler(
         config=config,
         fetcher=FakeFetcher(pages),
-        frontier=InMemoryQueue(),
-        results=InMemoryQueue(),
+        pending=InMemoryQueue(),
+        fetched=InMemoryQueue(),
     )
 
 

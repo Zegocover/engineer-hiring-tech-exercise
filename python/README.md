@@ -98,9 +98,9 @@ state, so no locks are needed.
 
 ```mermaid
 flowchart LR
-    seed["seed URL"] --> FR["frontier queue"]
+    seed["seed URL"] --> FR["pending queue<br/>(URLs to fetch)"]
     FR --> FW["fetch workers ×N<br/>(httpx fetch)"]
-    FW --> RQ["results queue<br/>(HTML)"]
+    FW --> RQ["fetched queue<br/>(HTML to parse)"]
     RQ --> PL["parse loop ×1<br/>(extract → normalize → classify)"]
     PL -->|on-host, unseen| FR
     PL -->|every page| OUT["stdout (text / JSONL)"]

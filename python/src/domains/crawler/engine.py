@@ -16,7 +16,7 @@ class Crawler:
 
     Shutdown uses task cancellation, not a sentinel: when `_in_flight` reaches 0
     every enqueued URL has been fetched AND parsed, so all workers are guaranteed
-    idle (blocked on `frontier.get()`) and can be cancelled safely. This keeps
+    idle (blocked on `pending.get()`) and can be cancelled safely. This keeps
     the queues cleanly typed (`Queue[str]` / `Queue[FetchResult]`).
     """
 
@@ -24,14 +24,14 @@ class Crawler:
         self,
         config: CrawlConfig,
         fetcher: Fetcher,
-        frontier: Queue[str],
-        results: Queue[FetchResult],
+        pending: Queue[str],
+        fetched: Queue[FetchResult],
     ) -> None:
         self._config = config
         self._fetcher = fetcher
         self._parser = LinkParser(config.seed_host)
-        self._frontier = frontier
-        self._results = results
+        self._pending = pending
+        self._fetched = fetched
         self._visited: set[str] = set()
         self._in_flight = 0
         self._truncated = False
@@ -46,7 +46,7 @@ class Crawler:
             await self._stop_workers(workers)
 
     async def _process_one(self) -> PageResult:
-        result = await self._results.get()
+        result = await self._fetched.get()
         outcome = await self._parser.parse(result)
         for url in outcome.on_host_links:
             await self._enqueue_if_new(url)
@@ -65,7 +65,7 @@ class Crawler:
         # The only writer of _visited / _in_flight.
         self._visited.add(url)
         self._in_flight += 1
-        await self._frontier.put(url)
+        await self._pending.put(url)
 
     @property
     def _at_cap(self) -> bool:
@@ -82,9 +82,9 @@ class Crawler:
 
     async def _worker(self) -> None:
         while True:
-            url = await self._frontier.get()
+            url = await self._pending.get()
             result = await self._fetcher.fetch(url)
-            await self._results.put(result)
+            await self._fetched.put(result)
 
     async def _stop_workers(self, workers: list[asyncio.Task[None]]) -> None:
         for worker in workers:
