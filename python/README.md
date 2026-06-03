@@ -68,17 +68,17 @@ dependencies pointing inward toward a pure domain core.
 ```mermaid
 flowchart TD
     CLI["src/crawler<br/>CLI · composition root · output"]
-    DOM["src/domains/crawler<br/>engine · stage · extractor · ports · models · urls"]
+    DOM["src/domains/crawler<br/>engine · parser · ports · models · urls"]
     GW["src/gateways<br/>httpx fetcher · in-memory queue"]
     CLI --> DOM
     GW --> DOM
     CLI --> GW
 ```
 
-- **`src/domains/crawler`** — the inner core: the `engine` coordinator, the parse
-  `stage`, the link `extractor`, the `ports` (Protocols), the frozen `models`, and
-  URL logic. It performs no I/O — it uses selectolax purely for in-process HTML
-  parsing, but makes no network or filesystem calls.
+- **`src/domains/crawler`** — the inner core: the `engine` coordinator, the
+  `parser` (link extraction + on-host classification), the `ports` (Protocols),
+  the frozen `models`, and URL logic. It performs no I/O — it uses selectolax
+  purely for in-process HTML parsing, but makes no network or filesystem calls.
 - **`src/gateways`** — outward adapters that implement the domain ports: an httpx
   fetcher and an in-memory queue.
 - **`src/crawler`** — the CLI composition root: the Typer app, the `crawler_factory`
@@ -132,7 +132,7 @@ clean task cancellation — no sentinel values threading through the queues.
   exercise this size does not need a DI framework.
 - **selectolax + httpx.** Chosen for speed and a clean async API. httpx sits
   behind the `Fetcher` port (a different client is a one-file change); selectolax
-  is used directly inside the parse stage as the link-extraction strategy.
+  is used directly inside the `parser` as the link-extraction strategy.
 - **Deliberate non-abstractions.** The `visited` set stays a plain `set` — it is
   single-writer and inseparable from the in-process completion logic, so a port
   around it would be ceremony. The bias throughout is toward minimal cognitive
@@ -183,8 +183,7 @@ python/
 │   │   └── __main__.py          # enables `python -m crawler`
 │   ├── domains/crawler/         # domain core (no I/O)
 │   │   ├── engine.py            # the async crawl coordinator
-│   │   ├── stages/              # parse stage (extract → normalize → classify)
-│   │   ├── extractor.py         # selectolax link extractor
+│   │   ├── parser.py            # link extraction + on-host classification
 │   │   ├── ports.py             # Protocols: Fetcher, Queue
 │   │   ├── models.py            # frozen dataclasses
 │   │   └── urls.py              # normalize / extract_host / same_host

@@ -6,8 +6,8 @@ import asyncio
 from collections.abc import AsyncIterator
 
 from domains.crawler.models import CrawlConfig, FetchResult, PageResult
+from domains.crawler.parser import LinkParser
 from domains.crawler.ports import Fetcher, Queue
-from domains.crawler.stages.parse_stage import DefaultParseStage
 
 
 class Crawler:
@@ -29,7 +29,7 @@ class Crawler:
     ) -> None:
         self._config = config
         self._fetcher = fetcher
-        self._parse_stage = DefaultParseStage(config.seed_host)
+        self._parser = LinkParser(config.seed_host)
         self._frontier = frontier
         self._results = results
         self._visited: set[str] = set()
@@ -47,7 +47,7 @@ class Crawler:
 
     async def _process_one(self) -> PageResult:
         result = await self._results.get()
-        outcome = await self._parse_stage.parse(result)
+        outcome = await self._parser.parse(result)
         for url in outcome.on_host_links:
             await self._enqueue_if_new(url)
         self._in_flight -= 1

@@ -2,13 +2,13 @@
 
 from domains.crawler.engine import Crawler
 from domains.crawler.models import CrawlConfig, FetchResult, PageResult, ParseOutcome
-from domains.crawler.stages.parse_stage import DefaultParseStage
+from domains.crawler.parser import LinkParser
 
 __all__ = [
     "CrawlConfig",
     "Crawler",
-    "DefaultParseStage",
     "FetchResult",
+    "LinkParser",
     "PageResult",
     "ParseOutcome",
 ]
