@@ -26,7 +26,7 @@ make run ARGS="--help"
 ## Usage
 
 ```bash
-crawler crawl URL [OPTIONS]
+make run ARGS="crawl URL [OPTIONS]"
 ```
 
 Crawl `URL` within its own domain and print each discovered page with the links
