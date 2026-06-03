@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Zego take-home hiring exercise: a single-domain web crawler CLI named `crawler`. The exercise is judged on software design, code structure, and testing — not just a working result — and the `python/README.md` is expected to carry a written discussion of design decisions and trade-offs. The original brief is in `test_instructions.md`.
 
-**Current state: scaffolding only.** The `crawl` command (`src/crawler/cli.py`) is a stub that prints `crawl: not implemented` and exits 1. The crawling logic (HTTP client, HTML parsing, async fan-out, domain filtering) is the next thing to build.
+**Current state: fully implemented** on branch `zegotest` (not yet merged to `main`); `make check` is green. `crawler crawl URL` crawls a single domain concurrently and prints each page with the links found on it. The full design discussion and trade-offs live in `python/README.md`.
 
 ### Constraints from the brief (these shape the real implementation)
 
@@ -35,10 +35,17 @@ The `Makefile` is the canonical task interface; run everything from the `python/
 
 ## Architecture
 
-- **`src/` layout**, single package `crawler`. Tests live in `tests/` (outside the package, so they aren't shipped in wheels). The `src/` layout is deliberate — it prevents accidental imports from cwd so tests exercise the installed package, not the source tree.
+The code is a Clean Architecture split, with dependencies pointing inward to a pure domain core:
+
+- **`src/crawler`** (outer layer / composition root) — the Typer app (`cli.py`), the `crawler_factory` wiring (`factory.py`), and the text/JSONL renderers (`presenters.py`).
+- **`src/domains/crawler`** (pure core, no I/O) — the async `engine.py` coordinator; `parser.py`, holding `SelectolaxExtractor` + `LinkParser` (HTML link extraction and on-host/off-site classification); `ports.py`, with the only two ports — the `Fetcher` and `Queue` Protocols; frozen `models.py`; and `urls.py`. `tests/test_architecture.py` AST-scans this package and fails if it imports an I/O or framework library (httpx, typer, asyncer) or an outer layer (`crawler`, `gateways`); pure selectolax is allowed.
+- **`src/gateways`** (adapters implementing the ports) — `http/httpx_fetcher.py` (`HttpxFetcher`) and `queue/in_memory.py` (`InMemoryQueue`).
+- **Concurrency model** — N fetch workers pull URLs from a `pending` queue and push responses to a `fetched` queue; a single parse loop owns the visited set and in-flight counter, so no locks are needed. The crawl is complete when the in-flight counter reaches zero.
+
+- **`src/` layout.** Tests live in `tests/` (outside the package, so they aren't shipped in wheels). The `src/` layout is deliberate — it prevents accidental imports from cwd so tests exercise the installed package, not the source tree.
 - **Two entry points**, both routing to the same Typer app (`crawler.cli:app`): the `crawler` console script (defined in `[project.scripts]`) and `python -m crawler` (via `__main__.py`).
 - **CLI = Typer.** The function signature *is* the schema (arg names, types, defaults, help all derive from type hints). Add new commands as functions decorated with `@app.command()`.
-- **Async commands via `asyncer.runnify`.** Command bodies are real `async def`; `@runnify` wraps them so Typer can call them synchronously. **`@runnify` must be the innermost decorator, directly below `@app.command()`** — otherwise `typer.Exit` gets swallowed and exit codes are wrong. The intended concurrency model for the crawler is `asyncio` (it's I/O-bound): `asyncio.gather`, `Semaphore` for politeness limits, `Queue` for work distribution.
+- **Async commands via `asyncer.runnify`.** Command bodies are real `async def`; `@runnify` wraps them so Typer can call them synchronously. **`@runnify` must be the innermost decorator, directly below `@app.command()`** — otherwise `typer.Exit` gets swallowed and exit codes are wrong. The concurrency model is `asyncio` (the work is I/O-bound) — see the Architecture section above for the fetch-workers/parse-loop design.
 - **Tests use pytest with `asyncio_mode = "auto"`** — any `async def test_*` runs as an async test with no per-test marker. CLI behaviour is tested through Typer's `CliRunner`.
 
 ## Toolchain (the Astral stack on `uv`)

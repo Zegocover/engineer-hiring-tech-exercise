@@ -110,7 +110,7 @@ flowchart LR
 URL is enqueued, decremented after its HTML has been parsed. The crawl is done
 when that counter reaches zero, *not* when the queues look empty (checking "queues
 empty" would exit early while a worker is still mid-fetch). Once it hits zero
-every worker is provably idle, blocked on `frontier.get()`, so shutdown is a
+every worker is provably idle, blocked on `pending.get()`, so shutdown is a
 clean task cancellation — no sentinel values threading through the queues.
 
 ### Design decisions
