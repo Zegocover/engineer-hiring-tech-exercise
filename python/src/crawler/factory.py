@@ -6,7 +6,7 @@ from domains.crawler.engine import Crawler
 from domains.crawler.models import CrawlConfig, FetchResult
 from domains.crawler.ports import Queue
 from gateways.http.httpx_fetcher import HttpxFetcher
-from gateways.memory.queue import InMemoryQueue
+from gateways.queue.in_memory import InMemoryQueue
 
 
 def crawler_factory(config: CrawlConfig, client: httpx.AsyncClient) -> Crawler:

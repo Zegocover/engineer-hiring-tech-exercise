@@ -190,7 +190,7 @@ python/
 │   │   └── urls.py              # normalize / extract_host / same_host
 │   └── gateways/                # adapters (outer layer)
 │       ├── http/                # httpx fetcher
-│       └── memory/              # in-memory asyncio.Queue adapter
+│       └── queue/               # in-memory asyncio.Queue adapter
 ├── tests/                       # pytest suite (outside the package)
 └── pyproject.toml               # project metadata, deps, and tool config
 ```

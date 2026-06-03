@@ -1,5 +1,5 @@
 from domains.crawler.ports import Queue
-from gateways.memory.queue import InMemoryQueue
+from gateways.queue.in_memory import InMemoryQueue
 
 
 def test_satisfies_the_port() -> None:
