@@ -155,6 +155,13 @@ clean task cancellation — no sentinel values threading through the queues.
 - **URL credentials are dropped.** `user:pass@host` userinfo is stripped during
   normalization (from both the canonical URL and the host used for same-host
   matching). Fine for crawling; noted for completeness.
+- **Printed links are deduped per page, not across the crawl.** Within one page
+  duplicate links collapse (the parser normalizes them into a `set`, then sorts),
+  but no global dedup is applied across pages: a URL linked from many pages (the
+  home page, shared navigation, static assets, etc.) is printed once for every
+  page that references it. Cross-page deduplication of the output was not a
+  requirement and was intentionally left out — each page's link list stands on
+  its own.
 - **Distributed evolution.** The seams make a distributed version a swap rather
   than a rewrite: replace the in-memory `Queue` with Kafka/SQS, promote the
   `visited` set to a shared store (e.g. Redis `SADD`), and split fetch and parse
