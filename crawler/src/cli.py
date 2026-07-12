@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-pages", type=int, default=None, help="Optional cap on total pages crawled"
     )
     parser.add_argument(
-        "--user-agent", default="sitecrawler/0.1", help="User-Agent header sent with requests"
+        "--user-agent", default="zegocrawler/0.1", help="User-Agent header sent with requests"
     )
     parser.add_argument(
         "--log-level",
