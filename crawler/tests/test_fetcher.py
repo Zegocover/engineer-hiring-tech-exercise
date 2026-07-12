@@ -32,7 +32,7 @@ def _retrying_client(
     return httpx.AsyncClient(transport=RetryTransport(retry=retry))
 
 
-def _record_sleeps(monkeypatch) -> list[float]:
+def _record_sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     sleeps: list[float] = []
 
     async def fake_sleep(delay: float) -> None:
@@ -43,7 +43,7 @@ def _record_sleeps(monkeypatch) -> list[float]:
 
 
 @pytest.mark.asyncio
-async def test_fetch_success_returns_html():
+async def test_fetch_success_returns_html() -> None:
     async with httpx.AsyncClient() as client:
         with respx.mock(base_url="https://example.com") as mock:
             mock.get("/page").mock(return_value=_html("<html></html>"))
@@ -56,7 +56,7 @@ async def test_fetch_success_returns_html():
 
 
 @pytest.mark.asyncio
-async def test_fetch_retries_then_succeeds():
+async def test_fetch_retries_then_succeeds() -> None:
     async with _retrying_client(total=2) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/flaky")
@@ -69,7 +69,7 @@ async def test_fetch_retries_then_succeeds():
 
 
 @pytest.mark.asyncio
-async def test_fetch_exhausts_retries_and_fails():
+async def test_fetch_exhausts_retries_and_fails() -> None:
     async with _retrying_client(total=2) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/down").mock(return_value=httpx.Response(503))
@@ -82,7 +82,7 @@ async def test_fetch_exhausts_retries_and_fails():
 
 
 @pytest.mark.asyncio
-async def test_fetch_skips_non_html_content_type():
+async def test_fetch_skips_non_html_content_type() -> None:
     async with httpx.AsyncClient() as client:
         with respx.mock(base_url="https://example.com") as mock:
             mock.get("/file.pdf").mock(
@@ -98,7 +98,7 @@ async def test_fetch_skips_non_html_content_type():
 
 
 @pytest.mark.asyncio
-async def test_fetch_reports_final_url_after_redirect():
+async def test_fetch_reports_final_url_after_redirect() -> None:
     async with httpx.AsyncClient(follow_redirects=True) as client:
         with respx.mock(base_url="https://example.com") as mock:
             mock.get("/old").mock(
@@ -113,7 +113,7 @@ async def test_fetch_reports_final_url_after_redirect():
 
 
 @pytest.mark.asyncio
-async def test_fetch_non_200_non_retryable_status_returns_no_html():
+async def test_fetch_non_200_non_retryable_status_returns_no_html() -> None:
     async with httpx.AsyncClient() as client:
         with respx.mock(base_url="https://example.com") as mock:
             mock.get("/missing").mock(return_value=httpx.Response(404))
@@ -126,7 +126,7 @@ async def test_fetch_non_200_non_retryable_status_returns_no_html():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
-async def test_retries_on_each_retryable_status(status):
+async def test_retries_on_each_retryable_status(status: int) -> None:
     async with _retrying_client(total=1) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/flaky")
@@ -140,7 +140,7 @@ async def test_retries_on_each_retryable_status(status):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", [501, 505])
-async def test_does_not_retry_permanent_server_errors(status):
+async def test_does_not_retry_permanent_server_errors(status: int) -> None:
     async with _retrying_client(total=3) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/broken").mock(return_value=httpx.Response(status))
@@ -154,7 +154,7 @@ async def test_does_not_retry_permanent_server_errors(status):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status", [400, 403, 404])
-async def test_does_not_retry_generic_client_errors(status):
+async def test_does_not_retry_generic_client_errors(status: int) -> None:
     async with _retrying_client(total=3) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/bad").mock(return_value=httpx.Response(status))
@@ -166,7 +166,7 @@ async def test_does_not_retry_generic_client_errors(status):
 
 
 @pytest.mark.asyncio
-async def test_retries_on_timeout_exception():
+async def test_retries_on_timeout_exception() -> None:
     async with _retrying_client(total=1) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/slow")
@@ -179,7 +179,7 @@ async def test_retries_on_timeout_exception():
 
 
 @pytest.mark.asyncio
-async def test_retries_on_transport_error():
+async def test_retries_on_transport_error() -> None:
     async with _retrying_client(total=1) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/unreachable")
@@ -192,7 +192,7 @@ async def test_retries_on_transport_error():
 
 
 @pytest.mark.asyncio
-async def test_exhausts_retries_reports_last_exception_message():
+async def test_exhausts_retries_reports_last_exception_message() -> None:
     async with _retrying_client(total=1) as client:
         with respx.mock(base_url="https://example.com") as mock:
             route = mock.get("/dead")
@@ -210,7 +210,7 @@ async def test_exhausts_retries_reports_last_exception_message():
 
 
 @pytest.mark.asyncio
-async def test_retry_after_header_is_respected(monkeypatch):
+async def test_retry_after_header_is_respected(monkeypatch: pytest.MonkeyPatch) -> None:
     sleeps: list[float] = []
 
     async def fake_sleep(delay: float) -> None:
@@ -234,7 +234,7 @@ async def test_retry_after_header_is_respected(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_min_delay_sleeps_once_before_fetch(monkeypatch):
+async def test_min_delay_sleeps_once_before_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
     sleeps = _record_sleeps(monkeypatch)
 
     async with httpx.AsyncClient() as client:
@@ -248,7 +248,7 @@ async def test_min_delay_sleeps_once_before_fetch(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_zero_min_delay_never_sleeps_for_pacing():
+async def test_zero_min_delay_never_sleeps_for_pacing() -> None:
     async with httpx.AsyncClient() as client:
         with respx.mock(base_url="https://example.com") as mock:
             mock.get("/page").mock(return_value=_html())
