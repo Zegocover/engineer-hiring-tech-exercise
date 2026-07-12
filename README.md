@@ -1,3 +1,5 @@
+# python-developer-test
+
 # Zego
 
 ## About Us
@@ -40,11 +42,39 @@ team of engineers that thrive on challenge and innovation.
 - **Ownership & Accountability** - Our team members take ownership of their work, ensuring that solutions are reliable,
   scalable, and aligned with business needs. We trust our engineers to take initiative and drive meaningful progress.
 
-## The tests
+## Who should be taking this test?
 
-This repository contains the tests for the following roles:
+This test has been created for all levels of developer, Junior through to Staff Engineer and everyone in between.
+Ideally you have hands-on experience developing Python solutions using Object Oriented Programming methodologies in a commercial setting. You have good problem-solving abilities, a passion for writing clean and generally produce efficient, maintainable scaleable code.
 
-- [Python Developer](python/README.md)
-- [Front-end Developer](front-end/README.md)
+## The test 🧪
 
-Please visit the appropriate folder for the test you are doing and follow the instructions in the README file.
+Create a Python app that can be run from the command line that will accept a base URL to crawl the site.
+For each page it finds, the script will print the URL of the page and all the URLs it finds on that page.
+The crawler will only process that single domain and not crawl URLs pointing to other domains or subdomains.
+Please employ patterns that will allow your crawler to run as quickly as possible, making full use any
+patterns that might boost the speed of the task, whilst not sacrificing accuracy and compute resources.
+Do not use tools like Scrapy or Playwright. You may use libraries for other purposes such as making HTTP requests, parsing HTML and other similar tasks.
+
+## The objective
+
+This exercise is intended to allow you to demonstrate how you design software and write good quality code.
+We will look at how you have structured your code and how you test it. We want to understand how you have gone about
+solving this problem, what tools you used to become familiar with the subject matter and what tools you used to
+produce the code and verify your work. Please include detailed information about your IDE, the use of any
+interactive AI (such as Copilot) as well as any other AI tools that form part of your workflow.
+
+You might also consider how you would extend your code to handle more complex scenarios, such a crawling
+multiple domains at once, thinking about how a command line interface might not be best suited for this purpose
+and what alternatives might be more suitable. Also, feel free to set the repo up as you would a production project.
+
+Extend this README to include a detailed discussion about your design decisions, the options you considered and
+the trade-offs you made during the development process, and aspects you might have addressed or refined if not constrained by time.
+
+# Instructions
+
+1. Create a repo.
+2. Tackle the test.
+3. Push the code back.
+4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller and @ZEGODiogoAlves) as collaborators and tag us to review.
+5. Notify your TA so they can chase the reviewers.
