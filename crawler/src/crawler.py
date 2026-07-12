@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from .frontier import Frontier
 from .normaliser import URLNormaliser
 from .robots import RobotsPolicy
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class CrawlStats:
@@ -34,6 +36,7 @@ class Crawler:
         domain_filter: DomainFilter,
         robots_policy: RobotsPolicy,
         concurrency: int = 10,
+        max_pages: int | None = None,
     ) -> None:
         self._base_url = base_url
         self._fetcher = fetcher
@@ -41,6 +44,7 @@ class Crawler:
         self._domain_filter = domain_filter
         self._robots_policy = robots_policy
         self._concurrency = concurrency
+        self._max_pages = max_pages
         self._stats = CrawlStats()
         self._content_extractor = content_extractor
         self._normaliser = normaliser
@@ -66,7 +70,11 @@ class Crawler:
                 self._frontier.task_done()
 
     async def _process(self, url: str) -> None:
-        # First of all check if we are allowed to visit the url
+        if self._max_pages is not None and self._stats.pages_crawled >= self._max_pages:
+            logger.warning(f"Reached maximum number of pages ({self._max_pages}, stopping crawl")
+            return
+
+        # Check if we are allowed to visit the url
         if not self._robots_policy.is_allowed(url):
             self._stats.robots_disallowed += 1
             self._frontier.mark_visited(url)

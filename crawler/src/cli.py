@@ -55,6 +55,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Number of keep-alive connections the pool may hold below --max-connections",
     )
     parser.add_argument(
+        "--max-pages", type=int, default=None, help="Optional cap on total pages crawled"
+    )
+    parser.add_argument(
         "--user-agent", default="sitecrawler/0.1", help="User-Agent header sent with requests"
     )
     parser.add_argument(
@@ -108,6 +111,7 @@ async def _run(args: argparse.Namespace) -> int:
             domain_filter=domain_filter,
             concurrency=args.concurrency,
             robots_policy=robots_policy,
+            max_pages=args.max_pages,
         )
         stats = await crawler.run()
 
