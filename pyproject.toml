@@ -5,6 +5,8 @@ description = "A fast, single-domain, asynchronous web crawler."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
 ]
 
 [project.scripts]
@@ -13,6 +15,8 @@ crawler = "crawler.src.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
     "ruff>=0.7",
     "mypy>=1.13",
 ]
