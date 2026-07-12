@@ -10,13 +10,14 @@ from .fetcher import Fetcher
 from .filters import DomainFilter
 from .frontier import Frontier
 from .normaliser import URLNormaliser
+from .robots import RobotsPolicy
 
 
 @dataclass
 class CrawlStats:
     pages_crawled: int = 0
     errors: int = 0
-
+    robots_disallowed: int = 0
 
 class Crawler:
     """The craler is a simple orchestration layer, it doesn't perform any requests, parsing,
@@ -31,12 +32,14 @@ class Crawler:
         normaliser: URLNormaliser,
         content_extractor: ContentExtractor,
         domain_filter: DomainFilter,
+        robots_policy: RobotsPolicy,
         concurrency: int = 10,
     ) -> None:
         self._base_url = base_url
         self._fetcher = fetcher
         self._frontier = frontier
         self._domain_filter = domain_filter
+        self._robots_policy = robots_policy
         self._concurrency = concurrency
         self._stats = CrawlStats()
         self._content_extractor = content_extractor
@@ -63,6 +66,12 @@ class Crawler:
                 self._frontier.task_done()
 
     async def _process(self, url: str) -> None:
+        # First of all check if we are allowed to visit the url
+        if not self._robots_policy.is_allowed(url):
+            self._stats.robots_disallowed += 1
+            self._frontier.mark_visited(url)
+            return
+        
         result = await self._fetcher.fetch(url)
         self._frontier.mark_visited(result.url)
 

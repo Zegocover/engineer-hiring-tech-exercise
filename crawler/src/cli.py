@@ -14,6 +14,7 @@ from .fetcher import Fetcher
 from .filters import ExactDomainFilter
 from .frontier import Frontier
 from .normaliser import DefaultURLNormaliser
+from .robots import load_robots_policy
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "base_url", help="Starting URL to crawling from, e.g. https://192.168.1.100:3000"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=10, help="Concurrent worker tasks (default: 10)"
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=10.0, help="Per-request timeout, in seconds (default: 10)"
+    )
+    parser.add_argument(
+        "--max-retries", type=int, default=3, help="Max retry attempts per request (default: 3)"
+    )
+    parser.add_argument(
+        "--max-pages", type=int, default=None, help="Optional cap on total pages crawled"
+    )
+    parser.add_argument(
+        "--max-connections",
+        type=int,
+        default=10,
+        help="Maximum number of concurrent connections that may be established",
+    )
+    parser.add_argument(
+        "--max-keepalive-connections",
+        type=int,
+        default=5,
+        help="Number of keep-alive connections the pool may hold below --max-connections",
+    )
+    parser.add_argument(
+        "--user-agent", default="sitecrawler/0.1", help="User-Agent header sent with requests"
     )
     parser.add_argument(
         "--log-level",
@@ -39,19 +67,35 @@ def _validate_base_url(base_url: str) -> None:
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise SystemExit(f"error: base_url must be an absolute http(s) URL, got {base_url!r}")
 
+def _create_client(args: argparse.Namespace) ->  httpx.AsyncClient:
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=5.0, read=args.timeout, write=args.timeout, pool=5.0),
+        limits=httpx.Limits(
+            max_connections=args.max_connections,
+            max_keepalive_connections=args.max_keepalive_connections,
+        ),
+        follow_redirects=True,
+        headers={"User-Agent": args.user_agent}
+    )
+
 async def _run(args: argparse.Namespace) -> int:
     domain_filter = ExactDomainFilter(args.base_url)
     frontier = Frontier()
     normaliser = DefaultURLNormaliser()
     content_extractor = LinkContentExtractor(normaliser)
 
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(connect=5.0, read=10, write=10, pool=5.0),
-        limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
-        follow_redirects=True,
-        headers={"User-Agent": "Mozilla/5.0"},
-    ) as client:
-        fetcher = Fetcher(client, max_retries=3)
+    async with _create_client(args) as client:
+        # Fetching robots.txt is a blocking prerequisite: no worker task is created
+        # (and so no page can be fetched) until this await resolves.
+        robots_fetcher = Fetcher(client, max_retries=args.max_retries)
+        robots_policy = await load_robots_policy(args.base_url, robots_fetcher, args.user_agent)
+
+        fetcher = Fetcher(
+            client,
+            max_retries=args.max_retries,
+            min_delay=robots_policy.crawl_delay or 0.0,
+        )
+
         crawler = Crawler(
             args.base_url,
             fetcher=fetcher,
@@ -59,11 +103,15 @@ async def _run(args: argparse.Namespace) -> int:
             frontier=frontier,
             content_extractor=content_extractor,
             domain_filter=domain_filter,
-            concurrency=10,
+            concurrency=args.concurrency,
+            robots_policy=robots_policy,
         )
         stats = await crawler.run()
 
-    print(f"Crawled {stats.pages_crawled} pages, {stats.errors} errors.", file=sys.stderr)
+    logger.info(
+        f"Crawled {stats.pages_crawled} pages, {stats.errors} errors, "
+        f"{stats.robots_disallowed} skipped by robots.txt."
+    )
     return 0
 
 def main(argv: list[str] | None = None) -> int:
