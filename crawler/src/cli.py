@@ -7,6 +7,7 @@ import sys
 from urllib.parse import urlsplit
 
 import httpx
+from httpx_retries import Retry, RetryTransport
 
 from .crawler import Crawler
 from .extractor import LinkContentExtractor
@@ -17,6 +18,8 @@ from .normaliser import DefaultURLNormaliser
 from .robots import load_robots_policy
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -46,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum number of concurrent connections that may be established",
     )
     parser.add_argument(
-        "--max-keepalive-connections",
+        "--max-keep-alive-connections",
         type=int,
         default=5,
         help="Number of keep-alive connections the pool may hold below --max-connections",
@@ -67,12 +70,14 @@ def _validate_base_url(base_url: str) -> None:
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise SystemExit(f"error: base_url must be an absolute http(s) URL, got {base_url!r}")
 
-def _create_client(args: argparse.Namespace) ->  httpx.AsyncClient:
+def _create_client(args: argparse.Namespace) -> httpx.AsyncClient:
+    retry = Retry(total=args.max_retries, status_forcelist=_RETRYABLE_STATUS)
     return httpx.AsyncClient(
+        transport=RetryTransport(retry=retry),
         timeout=httpx.Timeout(connect=5.0, read=args.timeout, write=args.timeout, pool=5.0),
         limits=httpx.Limits(
             max_connections=args.max_connections,
-            max_keepalive_connections=args.max_keepalive_connections,
+            max_keepalive_connections=args.max_keep_alive_connections,
         ),
         follow_redirects=True,
         headers={"User-Agent": args.user_agent}
@@ -85,16 +90,14 @@ async def _run(args: argparse.Namespace) -> int:
     content_extractor = LinkContentExtractor(normaliser)
 
     async with _create_client(args) as client:
-        # Fetching robots.txt is a blocking prerequisite: no worker task is created
-        # (and so no page can be fetched) until this await resolves.
-        robots_fetcher = Fetcher(client, max_retries=args.max_retries)
+        # Fetching robots.txt is a blocking prerequisite: no worke is done
+        # until this await resolves. Retries for
+        # this request are handled by the client's RetryTransport, same as any
+        # other fetch operation
+        robots_fetcher = Fetcher(client)
         robots_policy = await load_robots_policy(args.base_url, robots_fetcher, args.user_agent)
 
-        fetcher = Fetcher(
-            client,
-            max_retries=args.max_retries,
-            min_delay=robots_policy.crawl_delay or 0.0,
-        )
+        fetcher = Fetcher(client, min_delay=robots_policy.crawl_delay or 0.0)
 
         crawler = Crawler(
             args.base_url,
