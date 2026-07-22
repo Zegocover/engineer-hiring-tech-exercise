@@ -1,0 +1,14 @@
+services:
+  crawler:
+    build:
+      context: .
+      target: runtime
+    image: zego-crawler:latest
+
+  tests:
+    build:
+      context: .
+      target: test
+    image: zego-crawler:tests
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
