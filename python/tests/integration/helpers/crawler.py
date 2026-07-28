@@ -1,10 +1,8 @@
-
-
 import asyncio
 
 import httpx
 
-from crawler.config import DEFAULT_MAX_CONCURRENCY
+from crawler.config import DEFAULT_MAX_CONCURRENCY, USER_AGENT
 from crawler.crawler import Crawler, CrawlResult
 
 
@@ -18,9 +16,9 @@ def run_crawler(
     against an in-process transport) and runs the crawl to completion."""
 
     async def _run() -> CrawlResult:
-        async with httpx.AsyncClient(transport=transport) as client:
-            return await Crawler().crawl(
-                client, start_url, timeout, max_concurrency
-            )
+        async with httpx.AsyncClient(
+            transport=transport, headers={"User-Agent": USER_AGENT}
+        ) as client:
+            return await Crawler().crawl(client, start_url, timeout, max_concurrency)
 
     return asyncio.run(_run())

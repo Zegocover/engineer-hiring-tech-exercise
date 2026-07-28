@@ -8,12 +8,16 @@ from tests.integration.helpers.website import Page, make_app
 
 
 def _cache_for(pages: dict[str, Page]) -> RobotsCache:
-    app, _requests = make_app(pages)
-    cache = RobotsCache()
-    cache.client = httpx.AsyncClient(
+    cache, _requests = _cache_and_log_for(pages)
+    return cache
+
+
+def _cache_and_log_for(pages: dict[str, Page]) -> tuple[RobotsCache, list]:
+    app, requests = make_app(pages)
+    client = httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testsite.local"
     )
-    return cache
+    return RobotsCache(client=client), requests
 
 
 class TestRobotsCache:
@@ -36,7 +40,11 @@ class TestRobotsCache:
         "An expired cache entry should be ignored and the robots.txt refetched."
         # Arrange
         cache = _cache_for(
-            {"/robots.txt": Page("User-agent: *\nDisallow: /fresh", content_type="text/plain")}
+            {
+                "/robots.txt": Page(
+                    "User-agent: *\nDisallow: /fresh", content_type="text/plain"
+                )
+            }
         )
         cache._cache["http://testsite.local"] = (
             datetime.now(UTC) - timedelta(minutes=5),
@@ -53,7 +61,11 @@ class TestRobotsCache:
         "A 200 response with a text/plain content type should return the body as-is."
         # Arrange
         cache = _cache_for(
-            {"/robots.txt": Page("User-agent: *\nDisallow: /admin", content_type="text/plain")}
+            {
+                "/robots.txt": Page(
+                    "User-agent: *\nDisallow: /admin", content_type="text/plain"
+                )
+            }
         )
 
         # Act
@@ -110,7 +122,7 @@ class TestRobotsCache:
         # Assert
         assert result is None
 
-    @pytest.mark.parametrize("status", [301, 418, 429])
+    @pytest.mark.parametrize("status", [301, 429])
     async def test_returns_none_on_unexpected_status(self, status):
         "Any other unhandled status code should fall through to the catch-all branch and return None."
         # Arrange
@@ -122,6 +134,50 @@ class TestRobotsCache:
         # Assert
         assert result is None
 
+    async def test_second_fetch_is_served_from_cache(self):
+        "A successful fetch should be stored, so a repeat lookup makes no second request."
+        # Arrange
+        cache, requests = _cache_and_log_for(
+            {
+                "/robots.txt": Page(
+                    "User-agent: *\nDisallow: /private", content_type="text/plain"
+                )
+            }
+        )
+
+        # Act
+        first = await cache.fetch_robots_txt("http://testsite.local/")
+        second = await cache.fetch_robots_txt("http://testsite.local/other")
+
+        # Assert
+        assert first == second == "User-agent: *\nDisallow: /private"
+        assert len(requests) == 1
+
+    async def test_blocking_failures_are_cached(self):
+        "A blocked domain should not be re-hit on every lookup within the TTL."
+        # Arrange
+        cache, requests = _cache_and_log_for({"/robots.txt": Page(status=503)})
+
+        # Act
+        first = await cache.fetch_robots_txt("http://testsite.local/")
+        second = await cache.fetch_robots_txt("http://testsite.local/other")
+
+        # Assert
+        assert first is None and second is None
+        assert len(requests) == 1
+
+    @pytest.mark.parametrize("status", [404, 410, 418])
+    async def test_returns_empty_rules_on_unavailable(self, status):
+        "4xx (other than 401/403/429) means robots.txt is absent, so nothing is disallowed."
+        # Arrange
+        cache = _cache_for({"/robots.txt": Page(status=status)})
+
+        # Act
+        result = await cache.fetch_robots_txt("http://testsite.local/")
+
+        # Assert
+        assert result == ""
+
     async def test_returns_none_on_too_many_redirects(self):
         "Exceeding max_redirects while fetching robots.txt should be caught and return None."
         # Arrange
@@ -129,12 +185,13 @@ class TestRobotsCache:
             "/robots.txt": Page(status=302, headers={"Location": "/robots.txt"}),
         }
         app, _requests = make_app(pages)
-        cache = RobotsCache(max_redirects=2)
-        cache.client = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
-            base_url="http://testsite.local",
-            follow_redirects=True,
-            max_redirects=2,
+        cache = RobotsCache(
+            client=httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://testsite.local",
+                follow_redirects=True,
+                max_redirects=2,
+            )
         )
 
         # Act
@@ -150,9 +207,10 @@ class TestRobotsCache:
         def _raise(request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectError("boom", request=request)
 
-        cache = RobotsCache()
-        cache.client = httpx.AsyncClient(
-            transport=httpx.MockTransport(_raise), base_url="http://testsite.local"
+        cache = RobotsCache(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(_raise), base_url="http://testsite.local"
+            )
         )
 
         # Act

@@ -10,6 +10,22 @@ SITES: dict[str, dict[str, Page]] = {
         "/": Page('<a href="/b">b</a>'),
         "/b": Page('<a href="/">home</a>'),
     },
+    # One resource linked four ways: bare, trailing slash, tracking param and
+    # fragment. All four must collapse to a single fetch.
+    "url_variants": {
+        "/": Page(
+            '<a href="/page">bare</a>'
+            '<a href="/page/">slash</a>'
+            '<a href="/page?utm_source=newsletter">tracked</a>'
+            '<a href="/page#section">fragment</a>'
+        ),
+        "/page": Page("done"),
+    },
+    "robots_unavailable": {
+        "/robots.txt": Page(status=503),
+        "/": Page('<a href="/b">b</a>'),
+        "/b": Page("ok"),
+    },
     "hundred_links": {
         "/": Page("".join(f'<a href="/target">{i}</a>' for i in range(100))),
         "/target": Page("done"),
