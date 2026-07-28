@@ -13,7 +13,7 @@ lint:
 	uv run ruff check .
 
 tui:
-	uv run python -m src.tui
+	PYTHONPATH=src uv run python -m tui
 
 cli:
-	uv run python -m src.cli $(ARGS)
+	PYTHONPATH=src uv run python -m cli $(ARGS)

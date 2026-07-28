@@ -19,3 +19,6 @@ build/
 
 
 .claude/
+
+# Crawl results (one JSON file per crawled domain)
+output/
