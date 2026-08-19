@@ -102,6 +102,7 @@ async def test_extract_links_from_url_uses_retry_after_for_rate_limits(
     )
     successful_response = FakeResponse()
     wait_times: list[float] = []
+
     async def record_sleep(delay: float) -> None:
         wait_times.append(delay)
 
@@ -114,3 +115,31 @@ async def test_extract_links_from_url_uses_retry_after_for_rate_limits(
         "https://example.test/docs"
     ]
     assert wait_times == [3.0]
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_raises_after_three_rate_limits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = httpx.Request("GET", "https://example.test")
+    rate_limited_response = httpx.Response(429, request=request)
+    wait_times: list[float] = []
+
+    async def record_sleep(delay: float) -> None:
+        wait_times.append(delay)
+
+    monkeypatch.setattr("site_crawler.parser.asyncio.sleep", record_sleep)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await extract_links_from_url_async(
+            FakeAsyncClient(
+                [
+                    rate_limited_response,
+                    rate_limited_response,
+                    rate_limited_response,
+                ]
+            ),
+            "https://example.test",
+        )
+
+    assert wait_times == [1.0, 2.0]

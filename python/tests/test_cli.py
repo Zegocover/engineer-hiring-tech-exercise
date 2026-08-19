@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 import pytest
 
@@ -243,3 +245,67 @@ def test_cli_crawls_shared_target_only_once(
     main([base_url, "--depth", "2"])
 
     assert fetched_urls.count(shared_url) == 1
+
+
+def test_cli_limits_concurrent_fetches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_url = "https://example.test"
+    page_urls = [
+        f"https://example.test/page-{page_number}" for page_number in range(5)
+    ]
+    active_fetches = 0
+    maximum_active_fetches = 0
+
+    async def fetch_links(
+        client: httpx.AsyncClient,
+        url: str,
+        include_duplicates: bool = False,
+    ) -> list[str]:
+        nonlocal active_fetches, maximum_active_fetches
+        active_fetches += 1
+        maximum_active_fetches = max(
+            maximum_active_fetches, active_fetches
+        )
+        await asyncio.sleep(0)
+        active_fetches -= 1
+        return page_urls if url == base_url else []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
+    )
+
+    main([base_url, "--depth", "1", "--concurrency", "2"])
+
+    assert maximum_active_fetches == 2
+
+
+def test_cli_continues_after_request_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    failed_url = "https://example.test/failed"
+    working_url = "https://example.test/working"
+
+    async def fetch_links(
+        client: httpx.AsyncClient,
+        url: str,
+        include_duplicates: bool = False,
+    ) -> list[str]:
+        if url == failed_url:
+            raise httpx.ConnectError(
+                "connection failed",
+                request=httpx.Request("GET", url),
+            )
+        if url == "https://example.test":
+            return [failed_url, working_url]
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
+    )
+
+    main(["https://example.test", "--depth", "1"])
+
+    output = capsys.readouterr().out
+    assert f"Error fetching {failed_url}: connection failed" in output
+    assert f"URL: {working_url} contains 0 links:" in output
