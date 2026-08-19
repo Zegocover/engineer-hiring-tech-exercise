@@ -130,5 +130,5 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
     main(["https://example.test", "--depth", "1"])
 
     output = capsys.readouterr().out
-    assert f"Error fetching {missing_url}:" in output
+    assert f"Error fetching {missing_url}: 404" in output
     assert f"URL: {working_url} contains 0 links:" in output

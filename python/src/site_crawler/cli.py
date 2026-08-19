@@ -66,7 +66,12 @@ async def crawl_pages(
         for task in asyncio.as_completed(tasks):
             url, links, error = await task
             if error is not None:
-                print(f"Error fetching {url}: {error}")
+                status = (
+                    error.response.status_code
+                    if hasattr(error, "response")
+                    else error
+                )
+                print(f"Error fetching {url}: {status}")
                 continue
 
             assert links is not None
