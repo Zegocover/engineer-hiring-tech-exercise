@@ -132,3 +132,26 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
     output = capsys.readouterr().out
     assert f"Error fetching {missing_url}: 404" in output
     assert f"URL: {working_url} contains 0 links:" in output
+
+
+def test_cli_prints_error_when_base_url_returns_404(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base_url = "https://example.test"
+
+    def fetch_links(
+        url: str, include_duplicates: bool = False
+    ) -> list[str]:
+        request = httpx.Request("GET", url)
+        response = httpx.Response(404, request=request)
+        raise httpx.HTTPStatusError(
+            "404 Not Found", request=request, response=response
+        )
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url", fetch_links
+    )
+
+    main([base_url])
+
+    assert f"Error fetching {base_url}: 404" in capsys.readouterr().out

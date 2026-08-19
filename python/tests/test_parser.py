@@ -1,10 +1,15 @@
 import pytest
 
-from site_crawler.parser import extract_links, extract_links_from_url
+from site_crawler.parser import (
+    NonHtmlContentError,
+    extract_links,
+    extract_links_from_url,
+)
 
 
 class FakeResponse:
     text = '<a href="/docs">Docs</a>'
+    headers = {"content-type": "text/html; charset=utf-8"}
 
     def raise_for_status(self) -> None:
         pass
@@ -12,6 +17,7 @@ class FakeResponse:
 
 class NoLinksResponse:
     text = "<html><body><p>No links here.</p></body></html>"
+    headers = {"content-type": "text/html"}
 
     def raise_for_status(self) -> None:
         pass
@@ -59,3 +65,22 @@ def test_extract_links_from_url_returns_empty_list_when_page_has_no_links(
     )
 
     assert extract_links_from_url("https://example.test") == []
+
+
+def test_extract_links_from_url_rejects_non_html_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class PdfResponse:
+        headers = {"content-type": "application/pdf"}
+        text = "not html"
+
+        def raise_for_status(self) -> None:
+            pass
+
+    monkeypatch.setattr(
+        "site_crawler.parser.httpx.get",
+        lambda url, headers, timeout: PdfResponse(),
+    )
+
+    with pytest.raises(NonHtmlContentError, match="application/pdf"):
+        extract_links_from_url("https://example.test/document.pdf")

@@ -9,6 +9,10 @@ REQUEST_TIMEOUT = 5.0
 MAX_RETRIES = 3
 
 
+class NonHtmlContentError(httpx.HTTPError):
+    """Raised when a fetched response is not an HTML document."""
+
+
 def extract_links(
     html: str, page_url: str, include_duplicates: bool = False
 ) -> tuple[str, ...]:
@@ -46,6 +50,14 @@ def extract_links_from_url(
                 timeout=REQUEST_TIMEOUT,
             )
             response.raise_for_status()
+            content_type = response.headers.get("content-type", "")
+            if content_type and not any(
+                html_type in content_type.lower()
+                for html_type in ("text/html", "application/xhtml+xml")
+            ):
+                raise NonHtmlContentError(
+                    f"unsupported content type: {content_type}"
+                )
             return list(
                 extract_links(response.text, url, include_duplicates)
             )
