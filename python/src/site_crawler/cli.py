@@ -10,6 +10,33 @@ from site_crawler.parser import extract_links_from_url
 logger = logging.getLogger(__name__)
 
 
+def validate_base_url(value: str) -> str:
+    if any(character.isspace() for character in value):
+        raise argparse.ArgumentTypeError(
+            "base_url must not contain whitespace"
+        )
+
+    normalized_value = (
+        value if "://" in value else f"https://{value}"
+    )
+
+    try:
+        parsed = urlsplit(normalized_value)
+        hostname = parsed.hostname
+        parsed.port
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            f"invalid base_url: {error}"
+        ) from error
+
+    if parsed.scheme not in {"http", "https"} or hostname is None:
+        raise argparse.ArgumentTypeError(
+            "base_url must be a valid HTTP(S) URL with a hostname"
+        )
+
+    return normalized_value
+
+
 async def crawl_pages(
     base_url: str, depth_limit: int | None, include_duplicates: bool
 ) -> None:
@@ -57,7 +84,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Crawl pages belonging to one exact domain.",
     )
     parser.add_argument(
-        "base_url", help="HTTP(S) URL at which to start crawling"
+        "base_url",
+        type=validate_base_url,
+        help="HTTP(S) URL at which to start crawling",
     )
     parser.add_argument(
         "--depth",
