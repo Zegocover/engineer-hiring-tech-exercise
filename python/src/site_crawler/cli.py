@@ -3,17 +3,26 @@ import asyncio
 import logging
 from urllib.parse import urlsplit
 
+import httpx
+
 from site_crawler.parser import extract_links_from_url
 
 logger = logging.getLogger(__name__)
 
 
 async def crawl_pages(
-    base_url: str, depth_limit: int | None
+    base_url: str, depth_limit: int | None, include_duplicates: bool
 ) -> None:
-    async def fetch_page(url: str) -> tuple[str, list[str]]:
-        links = await asyncio.to_thread(extract_links_from_url, url)
-        return url, links
+    async def fetch_page(
+        url: str,
+    ) -> tuple[str, list[str] | None, httpx.HTTPError | None]:
+        try:
+            links = await asyncio.to_thread(
+                extract_links_from_url, url, include_duplicates
+            )
+        except httpx.HTTPError as error:
+            return url, None, error
+        return url, links, None
 
     pending = {base_url}
     visited: set[str] = set()
@@ -28,8 +37,13 @@ async def crawl_pages(
 
         tasks = [fetch_page(url) for url in urls]
         for task in asyncio.as_completed(tasks):
-            url, links = await task
-            print(url)
+            url, links, error = await task
+            if error is not None:
+                print(f"Error fetching {url}: {error}")
+                continue
+
+            assert links is not None
+            print(f"URL: {url} contains {len(links)} links:")
             print(*links, sep="\n")
             next_pending.update(links)
 
@@ -54,6 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
             "Defaults to unlimited depth."
         ),
     )
+    parser.add_argument(
+        "--include-duplicates",
+        action="store_true",
+        help="Include repeated links found on the same page.",
+    )
     return parser
 
 
@@ -66,5 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         else "unlimited depth limit"
     )
     logger.info("Starting crawl of %s (%s)", domain, depth_limit)
-    asyncio.run(crawl_pages(args.base_url, args.depth))
+    asyncio.run(
+        crawl_pages(args.base_url, args.depth, args.include_duplicates)
+    )
     return 0

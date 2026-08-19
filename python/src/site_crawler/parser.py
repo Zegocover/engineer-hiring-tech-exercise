@@ -3,11 +3,15 @@ from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 import httpx
 from bs4 import BeautifulSoup
 
+USER_AGENT = "site-crawler/0.1 (+https://github.com/)"
 
-def extract_links(html: str, page_url: str) -> tuple[str, ...]:
-    """Extract unique, absolute HTTP(S) links from an HTML document."""
+
+def extract_links(
+    html: str, page_url: str, include_duplicates: bool = False
+) -> tuple[str, ...]:
+    """Extract absolute HTTP(S) links from an HTML document."""
     soup = BeautifulSoup(html, "html.parser")
-    links: set[str] = set()
+    links: list[str] = []
 
     for anchor in soup.find_all("a", href=True):
         href = anchor.get("href")
@@ -20,13 +24,17 @@ def extract_links(html: str, page_url: str) -> tuple[str, ...]:
                     without_fragment = urlunsplit(
                         parsed_url._replace(path="/")
                     )
-                links.add(without_fragment)
+                links.append(without_fragment)
 
-    return tuple(sorted(links))
+    if include_duplicates:
+        return tuple(links)
+    return tuple(dict.fromkeys(links))
 
 
-def extract_links_from_url(url: str) -> list[str]:
+def extract_links_from_url(
+    url: str, include_duplicates: bool = False
+) -> list[str]:
     """Fetch a page and return the absolute HTTP(S) links it contains."""
-    response = httpx.get(url)
+    response = httpx.get(url, headers={"User-Agent": USER_AGENT})
     response.raise_for_status()
-    return list(extract_links(response.text, url))
+    return list(extract_links(response.text, url, include_duplicates))
