@@ -182,3 +182,36 @@ def test_cli_skips_links_outside_the_base_domain(
         main([base_url, "--depth", "1"])
 
     assert fetched_urls == [base_url, internal_url]
+
+
+def test_cli_crawls_shared_target_only_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_url = "https://example.test"
+    first_url = "https://example.test/first"
+    second_url = "https://example.test/second"
+    deeper_url = "https://example.test/deeper"
+    shared_url = "https://example.test/shared"
+    fetched_urls: list[str] = []
+
+    def fetch_links(
+        url: str, include_duplicates: bool = False
+    ) -> list[str]:
+        fetched_urls.append(url)
+        if url == base_url:
+            return [first_url, second_url]
+        if url == first_url:
+            return [shared_url]
+        if url == second_url:
+            return [deeper_url]
+        if url == deeper_url:
+            return [shared_url]
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url", fetch_links
+    )
+
+    main([base_url, "--depth", "2"])
+
+    assert fetched_urls.count(shared_url) == 1
