@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from site_crawler.parser import extract_links_from_url
+from site_crawler.url_policy import UrlPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ async def crawl_pages(
 
     pending = {base_url}
     visited: set[str] = set()
+    url_policy = UrlPolicy(base_url)
     current_depth = 0
 
     while pending and (
@@ -77,7 +79,12 @@ async def crawl_pages(
             assert links is not None
             print(f"URL: {url} contains {len(links)} links:")
             print(*links, sep="\n")
-            next_pending.update(links)
+            for link in links:
+                normalized_link = url_policy.normalize(link)
+                if normalized_link is None:
+                    # Skipping URL outside crawl domain
+                    continue
+                next_pending.add(normalized_link)
 
         pending = next_pending
         current_depth += 1

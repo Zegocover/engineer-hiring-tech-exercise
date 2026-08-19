@@ -155,3 +155,30 @@ def test_cli_prints_error_when_base_url_returns_404(
     main([base_url])
 
     assert f"Error fetching {base_url}: 404" in capsys.readouterr().out
+
+
+def test_cli_skips_links_outside_the_base_domain(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    base_url = "https://example.test"
+    internal_url = "https://example.test/docs"
+    external_url = "https://other.test/docs"
+    subdomain_url = "https://www.example.test/docs"
+    fetched_urls: list[str] = []
+
+    def fetch_links(
+        url: str, include_duplicates: bool = False
+    ) -> list[str]:
+        fetched_urls.append(url)
+        if url == base_url:
+            return [internal_url, external_url, subdomain_url]
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url", fetch_links
+    )
+
+    with caplog.at_level("INFO"):
+        main([base_url, "--depth", "1"])
+
+    assert fetched_urls == [base_url, internal_url]
