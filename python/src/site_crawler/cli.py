@@ -42,12 +42,12 @@ async def crawl_pages(
 ) -> None:
     async def fetch_page(
         url: str,
-    ) -> tuple[str, list[str] | None, httpx.HTTPError | None]:
+    ) -> tuple[str, list[str] | None, Exception | None]:
         try:
             links = await asyncio.to_thread(
                 extract_links_from_url, url, include_duplicates
             )
-        except httpx.HTTPError as error:
+        except (httpx.HTTPError, httpx.RequestError) as error:
             return url, None, error
         return url, links, None
 

@@ -42,7 +42,7 @@ def test_extract_links_from_url_fetches_and_parses_page(
 ) -> None:
     monkeypatch.setattr(
         "site_crawler.parser.httpx.get",
-        lambda url, headers: FakeResponse(),
+        lambda url, headers, timeout: FakeResponse(),
     )
 
     assert extract_links_from_url("https://example.test/start") == [
@@ -55,7 +55,7 @@ def test_extract_links_from_url_returns_empty_list_when_page_has_no_links(
 ) -> None:
     monkeypatch.setattr(
         "site_crawler.parser.httpx.get",
-        lambda url, headers: NoLinksResponse(),
+        lambda url, headers, timeout: NoLinksResponse(),
     )
 
     assert extract_links_from_url("https://example.test") == []

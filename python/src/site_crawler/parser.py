@@ -1,9 +1,12 @@
+import time
 from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
 import httpx
 from bs4 import BeautifulSoup
 
 USER_AGENT = "site-crawler/0.1 (+https://github.com/)"
+REQUEST_TIMEOUT = 5.0
+MAX_RETRIES = 3
 
 
 def extract_links(
@@ -35,6 +38,20 @@ def extract_links_from_url(
     url: str, include_duplicates: bool = False
 ) -> list[str]:
     """Fetch a page and return the absolute HTTP(S) links it contains."""
-    response = httpx.get(url, headers={"User-Agent": USER_AGENT})
-    response.raise_for_status()
-    return list(extract_links(response.text, url, include_duplicates))
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = httpx.get(
+                url,
+                headers={"User-Agent": USER_AGENT},
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+            return list(
+                extract_links(response.text, url, include_duplicates)
+            )
+        except httpx.HTTPStatusError as error:
+            if error.response.status_code == 429 and attempt < MAX_RETRIES - 1:
+                wait_time = 2 ** attempt
+                time.sleep(wait_time)
+                continue
+            raise
