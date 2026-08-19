@@ -4,6 +4,14 @@ import pytest
 from site_crawler.cli import build_parser, main
 
 
+async def no_links(
+    client: httpx.AsyncClient,
+    url: str,
+    include_duplicates: bool = False,
+) -> list[str]:
+    return []
+
+
 def test_cli_requires_a_base_url() -> None:
     parser = build_parser()
 
@@ -12,6 +20,7 @@ def test_cli_requires_a_base_url() -> None:
     assert args.base_url == "https://wikipedia.org"
     assert args.depth is None
     assert args.include_duplicates is False
+    assert args.concurrency == 5
 
 
 def test_cli_accepts_a_maximum_depth() -> None:
@@ -49,6 +58,21 @@ def test_cli_accepts_include_duplicates() -> None:
     )
 
     assert args.include_duplicates is True
+
+
+def test_cli_accepts_concurrency() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["https://example.test", "--concurrency", "2"])
+
+    assert args.concurrency == 2
+
+
+def test_cli_rejects_non_positive_concurrency() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["https://example.test", "--concurrency", "0"])
 
 
 def test_cli_rejects_missing_base_url() -> None:
@@ -94,8 +118,8 @@ def test_cli_logs_crawl_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "site_crawler.cli.extract_links_from_url",
-        lambda url, include_duplicates=False: [],
+        "site_crawler.cli.extract_links_from_url_async",
+        no_links,
     )
 
     with caplog.at_level("INFO"):
@@ -110,7 +134,8 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
     missing_url = "https://example.test/missing"
     working_url = "https://example.test/working"
 
-    def fetch_links(
+    async def fetch_links(
+        client: httpx.AsyncClient,
         url: str, include_duplicates: bool = False
     ) -> list[str]:
         if url == missing_url:
@@ -124,7 +149,7 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
         return []
 
     monkeypatch.setattr(
-        "site_crawler.cli.extract_links_from_url", fetch_links
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
     )
 
     main(["https://example.test", "--depth", "1"])
@@ -139,7 +164,8 @@ def test_cli_prints_error_when_base_url_returns_404(
 ) -> None:
     base_url = "https://example.test"
 
-    def fetch_links(
+    async def fetch_links(
+        client: httpx.AsyncClient,
         url: str, include_duplicates: bool = False
     ) -> list[str]:
         request = httpx.Request("GET", url)
@@ -149,7 +175,7 @@ def test_cli_prints_error_when_base_url_returns_404(
         )
 
     monkeypatch.setattr(
-        "site_crawler.cli.extract_links_from_url", fetch_links
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
     )
 
     main([base_url])
@@ -166,7 +192,8 @@ def test_cli_skips_links_outside_the_base_domain(
     subdomain_url = "https://www.example.test/docs"
     fetched_urls: list[str] = []
 
-    def fetch_links(
+    async def fetch_links(
+        client: httpx.AsyncClient,
         url: str, include_duplicates: bool = False
     ) -> list[str]:
         fetched_urls.append(url)
@@ -175,7 +202,7 @@ def test_cli_skips_links_outside_the_base_domain(
         return []
 
     monkeypatch.setattr(
-        "site_crawler.cli.extract_links_from_url", fetch_links
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
     )
 
     with caplog.at_level("INFO"):
@@ -194,7 +221,8 @@ def test_cli_crawls_shared_target_only_once(
     shared_url = "https://example.test/shared"
     fetched_urls: list[str] = []
 
-    def fetch_links(
+    async def fetch_links(
+        client: httpx.AsyncClient,
         url: str, include_duplicates: bool = False
     ) -> list[str]:
         fetched_urls.append(url)
@@ -209,7 +237,7 @@ def test_cli_crawls_shared_target_only_once(
         return []
 
     monkeypatch.setattr(
-        "site_crawler.cli.extract_links_from_url", fetch_links
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
     )
 
     main([base_url, "--depth", "2"])

@@ -1,9 +1,10 @@
+import httpx
 import pytest
 
 from site_crawler.parser import (
     NonHtmlContentError,
     extract_links,
-    extract_links_from_url,
+    extract_links_from_url_async,
 )
 
 
@@ -21,6 +22,16 @@ class NoLinksResponse:
 
     def raise_for_status(self) -> None:
         pass
+
+
+class FakeAsyncClient:
+    def __init__(self, responses: list[object]) -> None:
+        self._responses = iter(responses)
+
+    async def get(
+        self, url: str, headers: dict, timeout: float
+    ) -> object:
+        return next(self._responses)
 
 
 def test_extract_links_resolves_relative_urls_and_drops_fragments() -> None:
@@ -43,33 +54,28 @@ def test_extract_links_can_include_duplicates() -> None:
     )
 
 
-def test_extract_links_from_url_fetches_and_parses_page(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "site_crawler.parser.httpx.get",
-        lambda url, headers, timeout: FakeResponse(),
-    )
+@pytest.mark.asyncio
+async def test_extract_links_from_url_fetches_and_parses_page() -> None:
+    client = FakeAsyncClient([FakeResponse()])
 
-    assert extract_links_from_url("https://example.test/start") == [
+    assert await extract_links_from_url_async(
+        client, "https://example.test/start"
+    ) == [
         "https://example.test/docs"
     ]
 
 
-def test_extract_links_from_url_returns_empty_list_when_page_has_no_links(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "site_crawler.parser.httpx.get",
-        lambda url, headers, timeout: NoLinksResponse(),
-    )
+@pytest.mark.asyncio
+async def test_extract_links_from_url_returns_no_links():
+    client = FakeAsyncClient([NoLinksResponse()])
 
-    assert extract_links_from_url("https://example.test") == []
+    assert await extract_links_from_url_async(
+        client, "https://example.test"
+    ) == []
 
 
-def test_extract_links_from_url_rejects_non_html_content(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+@pytest.mark.asyncio
+async def test_extract_links_from_url_rejects_non_html_content() -> None:
     class PdfResponse:
         headers = {"content-type": "application/pdf"}
         text = "not html"
@@ -77,10 +83,34 @@ def test_extract_links_from_url_rejects_non_html_content(
         def raise_for_status(self) -> None:
             pass
 
-    monkeypatch.setattr(
-        "site_crawler.parser.httpx.get",
-        lambda url, headers, timeout: PdfResponse(),
-    )
-
     with pytest.raises(NonHtmlContentError, match="application/pdf"):
-        extract_links_from_url("https://example.test/document.pdf")
+        await extract_links_from_url_async(
+            FakeAsyncClient([PdfResponse()]),
+            "https://example.test/document.pdf",
+        )
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_uses_retry_after_for_rate_limits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = httpx.Request("GET", "https://example.test")
+    rate_limited_response = httpx.Response(
+        429,
+        headers={"Retry-After": "3"},
+        request=request,
+    )
+    successful_response = FakeResponse()
+    wait_times: list[float] = []
+    async def record_sleep(delay: float) -> None:
+        wait_times.append(delay)
+
+    monkeypatch.setattr("site_crawler.parser.asyncio.sleep", record_sleep)
+
+    assert await extract_links_from_url_async(
+        FakeAsyncClient([rate_limited_response, successful_response]),
+        "https://example.test",
+    ) == [
+        "https://example.test/docs"
+    ]
+    assert wait_times == [3.0]
