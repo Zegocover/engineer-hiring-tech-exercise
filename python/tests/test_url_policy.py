@@ -11,6 +11,14 @@ def test_policy_allows_exact_host_and_removes_fragment() -> None:
     ) == "https://example.test/docs"
 
 
+def test_policy_canonicalizes_hostname_case() -> None:
+    policy = UrlPolicy("https://example.test")
+
+    assert policy.normalize("https://EXAMPLE.test/docs") == (
+        "https://example.test/docs"
+    )
+
+
 def test_policy_rejects_other_hosts_and_subdomains() -> None:
     policy = UrlPolicy("https://example.test")
 

@@ -20,10 +20,26 @@ class UrlPolicy:
         if parsed.hostname.lower() != self._host:
             return None
 
+        userinfo, separator, host_port = parsed.netloc.rpartition("@")
+        if host_port.startswith("["):
+            closing_bracket = host_port.index("]")
+            canonical_host_port = (
+                f"[{host_port[1:closing_bracket].lower()}]"
+                f"{host_port[closing_bracket + 1:]}"
+            )
+        else:
+            host, port_separator, port = host_port.partition(":")
+            canonical_host_port = (
+                f"{host.lower()}{port_separator}{port}"
+            )
+        canonical_netloc = (
+            f"{userinfo}{separator}{canonical_host_port}"
+        )
+
         return urlunsplit(
             (
                 parsed.scheme.lower(),
-                parsed.netloc,
+                canonical_netloc,
                 parsed.path or "/",
                 parsed.query,
                 "",

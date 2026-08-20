@@ -24,7 +24,7 @@ def _extract_response_links(
     response: httpx.Response, url: str, include_duplicates: bool
 ) -> list[str]:
     """
-    Extract links from an HTTP response, verifying that it is HTML based on 
+    Extract links from an HTTP response, verifying that it is HTML based on
     the content type header.
     """
     response.raise_for_status()
@@ -70,13 +70,14 @@ def extract_links(
         if isinstance(href, str):
             absolute_url = urljoin(page_url, href)
             without_fragment, _ = urldefrag(absolute_url)
-            if without_fragment.startswith(("http://", "https://")):
-                parsed_url = urlsplit(without_fragment)
+            parsed_url = urlsplit(without_fragment)
+            if parsed_url.scheme.lower() in {"http", "https"}:
+                parsed_url = parsed_url._replace(
+                    scheme=parsed_url.scheme.lower()
+                )
                 if not parsed_url.path:
-                    without_fragment = urlunsplit(
-                        parsed_url._replace(path="/")
-                    )
-                links.append(without_fragment)
+                    parsed_url = parsed_url._replace(path="/")
+                links.append(urlunsplit(parsed_url))
 
     if include_duplicates:
         return tuple(links)

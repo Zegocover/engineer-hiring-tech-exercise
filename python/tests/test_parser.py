@@ -51,6 +51,14 @@ def test_extract_links_resolves_relative_urls_and_drops_fragments() -> None:
     )
 
 
+def test_extract_links_accepts_uppercase_http_scheme() -> None:
+    html = '<a href="HTTP://example.test/docs">Docs</a>'
+
+    assert extract_links(html, "https://example.test/start") == (
+        "http://example.test/docs",
+    )
+
+
 def test_extract_links_can_include_duplicates() -> None:
     html = '<a href="/docs">One</a><a href="/docs">Two</a>'
 

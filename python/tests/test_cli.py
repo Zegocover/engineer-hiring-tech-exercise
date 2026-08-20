@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import pytest
 
-from site_crawler.cli import build_parser, main
+from site_crawler.cli import build_parser, crawl_pages, main
 
 
 async def no_links(
@@ -290,6 +290,35 @@ def test_cli_normalizes_base_url_before_crawling(
     main([base_url, "--depth", "1"])
 
     assert fetched_urls == [canonical_base_url]
+
+
+@pytest.mark.asyncio
+async def test_crawl_pages_fetches_hostname_case_variants_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_url = "https://example.test/"
+    canonical_url = "https://example.test/docs"
+    fetched_urls: list[str] = []
+
+    async def fetch_links(
+        client: httpx.AsyncClient,
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
+    ) -> list[str]:
+        fetched_urls.append(url)
+        if url == base_url:
+            return ["https://EXAMPLE.test/docs", canonical_url]
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
+    )
+
+    await crawl_pages(base_url, 1, False)
+
+    assert fetched_urls.count(canonical_url) == 1
+    assert "https://EXAMPLE.test/docs" not in fetched_urls
 
 
 def test_cli_limits_concurrent_fetches(
