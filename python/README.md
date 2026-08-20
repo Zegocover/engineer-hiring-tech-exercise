@@ -233,7 +233,7 @@ from the start.
 
 ## Development workflow
 
-Development and review were carried out in VS Code on WSL using the Python
+Development and review were carried out in VS Code on WSL (Ubuntu 22.04) using the Python
 virtual environment in the repository. GitHub Copilot was used interactively
 to help inspect the existing code, identify edge cases, propose focused tests,
 and review the implementation against the exercise requirements. Changes were
