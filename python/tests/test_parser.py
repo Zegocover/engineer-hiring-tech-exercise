@@ -2,13 +2,16 @@ import httpx
 import pytest
 
 from site_crawler.parser import (
+    ExternalRedirectError,
     NonHtmlContentError,
     extract_links,
     extract_links_from_url_async,
 )
+from site_crawler.url_policy import UrlPolicy
 
 
 class FakeResponse:
+    status_code = 200
     text = '<a href="/docs">Docs</a>'
     headers = {"content-type": "text/html; charset=utf-8"}
 
@@ -17,6 +20,7 @@ class FakeResponse:
 
 
 class NoLinksResponse:
+    status_code = 200
     text = "<html><body><p>No links here.</p></body></html>"
     headers = {"content-type": "text/html"}
 
@@ -27,10 +31,12 @@ class NoLinksResponse:
 class FakeAsyncClient:
     def __init__(self, responses: list[object]) -> None:
         self._responses = iter(responses)
+        self.requested_urls: list[str] = []
 
     async def get(
         self, url: str, headers: dict, timeout: float
     ) -> object:
+        self.requested_urls.append(url)
         return next(self._responses)
 
 
@@ -77,6 +83,7 @@ async def test_extract_links_from_url_returns_no_links():
 @pytest.mark.asyncio
 async def test_extract_links_from_url_rejects_non_html_content() -> None:
     class PdfResponse:
+        status_code = 200
         headers = {"content-type": "application/pdf"}
         text = "not html"
 
@@ -88,6 +95,26 @@ async def test_extract_links_from_url_rejects_non_html_content() -> None:
             FakeAsyncClient([PdfResponse()]),
             "https://example.test/document.pdf",
         )
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_rejects_external_redirect() -> None:
+    request = httpx.Request("GET", "https://example.test")
+    redirect = httpx.Response(
+        302,
+        headers={"Location": "https://other.test/"},
+        request=request,
+    )
+    client = FakeAsyncClient([redirect])
+
+    with pytest.raises(ExternalRedirectError, match="outside crawl host"):
+        await extract_links_from_url_async(
+            client,
+            "https://example.test",
+            url_policy=UrlPolicy("https://example.test"),
+        )
+
+    assert client.requested_urls == ["https://example.test"]
 
 
 @pytest.mark.asyncio

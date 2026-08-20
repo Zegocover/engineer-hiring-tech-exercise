@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def validate_base_url(value: str) -> str:
+    """
+    Validate and normalize a base URL for crawling. Ensures that the URL is a
+    valid HTTP(S) URL with a hostname, and normalizes it to include the
+    scheme (HTTPS) if missing.
+    """
     if any(character.isspace() for character in value):
         raise argparse.ArgumentTypeError(
             "base_url must not contain whitespace"
@@ -44,6 +49,10 @@ async def crawl_pages(
     include_duplicates: bool,
     concurrency: int = 5,
 ) -> None:
+    """
+    Crawl pages starting from the base URL, up to the specified depth limit.
+    Fetches pages concurrently, extracts links, and prints them to the console.
+    """
     semaphore = asyncio.Semaphore(concurrency)
 
     async def fetch_page(
@@ -52,13 +61,13 @@ async def crawl_pages(
         try:
             async with semaphore:
                 links = await extract_links_from_url_async(
-                    client, url, include_duplicates
+                    client, url, include_duplicates, url_policy
                 )
         except (httpx.HTTPError, httpx.RequestError) as error:
             return url, None, error
         return url, links, None
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    async with httpx.AsyncClient(follow_redirects=False) as client:
         pending = {base_url}
         visited: set[str] = set()
         url_policy = UrlPolicy(base_url)
@@ -99,13 +108,19 @@ async def crawl_pages(
 
 
 def positive_int(value: str) -> int:
-    concurrency = int(value)
-    if concurrency < 1:
+    """
+    Validate that a value is a positive integer.
+    """
+    int_value = int(value)
+    if int_value < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
-    return concurrency
+    return int_value
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """
+    Build and return the argument parser for the site crawler CLI.
+    """
     parser = argparse.ArgumentParser(
         prog="site-crawler",
         description="Crawl pages belonging to one exact domain.",
@@ -117,7 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--depth",
-        type=int,
+        type=positive_int,
         default=None,
         help=(
             "Maximum number of levels to crawl from the base URL. "
@@ -139,6 +154,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """
+    Start the site crawler CLI, parse arguments, and initiate the crawling
+    process.
+    """
     args = build_parser().parse_args(argv)
     domain = urlsplit(args.base_url).hostname or args.base_url
     depth_limit = (

@@ -10,6 +10,7 @@ async def no_links(
     client: httpx.AsyncClient,
     url: str,
     include_duplicates: bool = False,
+    url_policy: object | None = None,
 ) -> list[str]:
     return []
 
@@ -138,7 +139,9 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
 
     async def fetch_links(
         client: httpx.AsyncClient,
-        url: str, include_duplicates: bool = False
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         if url == missing_url:
             request = httpx.Request("GET", url)
@@ -168,7 +171,9 @@ def test_cli_prints_error_when_base_url_returns_404(
 
     async def fetch_links(
         client: httpx.AsyncClient,
-        url: str, include_duplicates: bool = False
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         request = httpx.Request("GET", url)
         response = httpx.Response(404, request=request)
@@ -196,7 +201,9 @@ def test_cli_skips_links_outside_the_base_domain(
 
     async def fetch_links(
         client: httpx.AsyncClient,
-        url: str, include_duplicates: bool = False
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         fetched_urls.append(url)
         if url == base_url:
@@ -225,7 +232,9 @@ def test_cli_crawls_shared_target_only_once(
 
     async def fetch_links(
         client: httpx.AsyncClient,
-        url: str, include_duplicates: bool = False
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         fetched_urls.append(url)
         if url == base_url:
@@ -261,6 +270,7 @@ def test_cli_limits_concurrent_fetches(
         client: httpx.AsyncClient,
         url: str,
         include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         nonlocal active_fetches, maximum_active_fetches
         active_fetches += 1
@@ -290,6 +300,7 @@ def test_cli_continues_after_request_error(
         client: httpx.AsyncClient,
         url: str,
         include_duplicates: bool = False,
+        url_policy: object | None = None,
     ) -> list[str]:
         if url == failed_url:
             raise httpx.ConnectError(
