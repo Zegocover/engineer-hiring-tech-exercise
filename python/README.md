@@ -78,3 +78,166 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller and @ZEGODiogoAlves) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+
+# Solution notes
+
+## How to run
+
+The project requires Python 3.10 or later. From the repository root, create
+and activate a virtual environment, then install the application and its test
+dependencies:
+
+```bash
+cd python
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[test]'
+```
+
+The crawler can then be run through the installed `site-crawler` command or as
+a Python module:
+
+```bash
+site-crawler https://example.com
+python -m site_crawler https://example.com
+```
+
+### Parameters
+
+The positional `base_url` is the starting page. It may include `http://` or
+`https://`; if no scheme is supplied, HTTPS is used. Only pages on the exact
+same hostname are crawled. Subdomains and external domains are skipped.
+
+Optional arguments:
+
+- `--depth N` limits the crawl to `N` levels from the starting page. The
+  default is unlimited depth. `N` must be a positive integer.
+- `--concurrency N` controls the maximum number of pages fetched at once. The
+  default is `5`, and `N` must be a positive integer.
+- `--include-duplicates` prints repeated links when the same link appears
+  more than once on a page. By default, links printed for each page are unique.
+
+Examples:
+
+```bash
+# Crawl from a hostname, using HTTPS by default.
+site-crawler example.com
+
+# Crawl the starting page and the next two levels.
+site-crawler https://example.com --depth 2
+
+# Use ten concurrent requests and preserve duplicate links in page output.
+site-crawler https://example.com --concurrency 10 --include-duplicates
+```
+
+For all available options, run:
+
+```bash
+site-crawler --help
+```
+
+### Running tests
+
+Run the complete test suite from the `python` directory:
+
+```bash
+python -m pytest
+```
+
+Run a specific test module when working on one part of the crawler:
+
+```bash
+python -m pytest tests/test_cli.py
+python -m pytest tests/test_parser.py
+python -m pytest tests/test_url_policy.py
+```
+
+Run the configured lint checks with:
+
+```bash
+ruff check .
+```
+
+## Design and structure
+
+The crawler is split into three small responsibilities:
+
+- `cli.py` owns argument parsing, crawl orchestration, breadth-first depth
+  handling, bounded concurrency, and console output.
+- `parser.py` owns HTTP requests, response validation, redirect handling,
+  retries for HTTP 429 responses, and HTML link extraction.
+- `url_policy.py` owns the crawl boundary. It accepts only HTTP(S) URLs on
+  the exact base hostname, removes fragments, and normalizes URLs without a
+  path to `/`.
+
+The initial URL and every discovered link pass through the same policy before
+being queued. A `visited` set prevents repeated fetches, including links that
+differ only by a fragment or by the presence of a trailing slash on the root
+URL.
+
+## Options considered
+
+`httpx.AsyncClient` was chosen over synchronous `urllib` calls because a crawl
+is dominated by network waiting. A shared client allows connection reuse, and
+the semaphore limits the number of concurrent requests. The default concurrency
+of five is deliberately conservative: it improves throughput without creating
+an unnecessarily aggressive load on the target site. It can be changed with
+`--concurrency`.
+
+BeautifulSoup was chosen for HTML parsing. A regular expression would be shorter
+but would be fragile around malformed markup, quoted attributes, and HTML
+entities. Scrapy and Playwright were not used.
+
+The crawl proceeds in breadth-first levels. This makes `--depth` predictable:
+the base page is level zero, its links are level one, and so on. Pages within a
+level are fetched concurrently and printed as they complete. That maximizes
+responsiveness, so output order is intentionally nondeterministic when request
+completion order differs. The crawler still guarantees that each normalized
+URL is fetched at most once.
+
+Redirects are handled explicitly rather than enabling automatic redirects.
+Each redirect target is resolved relative to the current URL and checked with
+the same host policy before it is requested. This prevents an allowed page
+from redirecting the crawler to another domain or subdomain.
+
+## Error handling and verification
+
+The crawler skips non-HTML responses, reports HTTP and request errors for an
+individual page, and continues with other queued pages. HTTP 429 responses are
+retried up to three times using `Retry-After` when available, otherwise an
+exponential backoff is used. Redirect chains are capped to avoid loops.
+
+The tests cover CLI validation, depth limits, concurrency, duplicate visits,
+URL policy boundaries, relative links, fragments, duplicate links, malformed
+redirects, cross-domain redirects, same-host redirects, timeouts, retries,
+unusual ports, and real `httpx.Response` objects through `MockTransport`.
+The project is checked with:
+
+```text
+cd python
+python -m pip install -e '.[test]'
+python -m pytest
+ruff check .
+```
+
+## Limitations and future work
+
+This is intentionally a single-process crawler for one exact hostname. It
+does not execute JavaScript, discover links generated by client-side code, or
+interpret sitemap files. It also does not yet implement robots.txt handling,
+response-size limits or authentication. Output is non-deterministic.
+
+The state is not stored - if a crawl is interrupted it will need to be run
+from the start.
+
+## Development workflow
+
+Development and review were carried out in VS Code on WSL using the Python
+virtual environment in the repository. GitHub Copilot was used interactively
+to help inspect the existing code, identify edge cases, propose focused tests,
+and review the implementation against the exercise requirements. Changes were
+validated locally with pytest and Ruff; network-dependent behavior was tested
+with mocked HTTP responses so the test suite remained repeatable and did not
+depend on an external website. The CLI was called manually to test against 
+https://crawler-test.com/.
