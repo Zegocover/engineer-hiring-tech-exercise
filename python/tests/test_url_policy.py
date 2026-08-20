@@ -21,3 +21,21 @@ def test_policy_rejects_other_hosts_and_subdomains() -> None:
 def test_policy_requires_http_url_with_hostname() -> None:
     with pytest.raises(ValueError):
         UrlPolicy("file:///tmp/index.html")
+
+
+@pytest.mark.parametrize(
+    ("url", "normalized_url"),
+    [
+        (
+            "https://example.test:8443/docs#intro",
+            "https://example.test:8443/docs",
+        ),
+        ("http://localhost:8080", "http://localhost:8080/"),
+    ],
+)
+def test_policy_preserves_unusual_valid_ports(
+    url: str, normalized_url: str
+) -> None:
+    policy = UrlPolicy(url)
+
+    assert policy.normalize(url) == normalized_url

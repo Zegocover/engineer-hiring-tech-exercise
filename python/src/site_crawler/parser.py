@@ -114,10 +114,8 @@ async def extract_links_from_url_async(
                 location = response.headers.get("location")
                 if location is None:
                     raise httpx.HTTPError(
-                        "redirect response missing Location header",
-                        request=response.request,
+                        "redirect response missing Location header"
                     )
-
                 redirect_url = urljoin(current_url, location)
                 if url_policy is not None and url_policy.normalize(
                     redirect_url

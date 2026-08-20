@@ -34,6 +34,13 @@ def test_cli_accepts_a_maximum_depth() -> None:
     assert args.depth == 2
 
 
+def test_cli_rejects_negative_depth() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["https://example.test", "--depth", "-1"])
+
+
 @pytest.mark.parametrize(
     ("base_url", "normalized_url"),
     [
@@ -92,6 +99,8 @@ def test_cli_rejects_missing_base_url() -> None:
         "https://",
         "https://bad host",
         "https://example.test:not-a-port",
+        "https://[::1",
+        "https://example.test:65536",
     ],
 )
 def test_cli_rejects_invalid_base_url(base_url: str) -> None:
@@ -347,3 +356,37 @@ def test_cli_continues_after_request_error(
     output = capsys.readouterr().out
     assert f"Error fetching {failed_url}: connection failed" in output
     assert f"URL: {working_url} contains 0 links:" in output
+
+
+def test_cli_prints_pages_in_completion_order(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base_url = "https://example.test/"
+    fast_url = "https://example.test/fast"
+    slow_url = "https://example.test/slow"
+    release_slow_page = asyncio.Event()
+
+    async def fetch_links(
+        client: httpx.AsyncClient,
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
+    ) -> list[str]:
+        if url == base_url:
+            return [slow_url, fast_url]
+        if url == slow_url:
+            await release_slow_page.wait()
+        if url == fast_url:
+            release_slow_page.set()
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
+    )
+
+    main([base_url, "--depth", "1"])
+
+    output = capsys.readouterr().out
+    assert output.index(f"URL: {fast_url}") < output.index(
+        f"URL: {slow_url}"
+    )

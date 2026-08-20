@@ -118,6 +118,74 @@ async def test_extract_links_from_url_rejects_external_redirect() -> None:
 
 
 @pytest.mark.asyncio
+async def test_extract_links_from_url_follows_same_host_redirect() -> None:
+    request = httpx.Request("GET", "https://example.test")
+    redirect = httpx.Response(
+        302,
+        headers={"Location": "/home"},
+        request=request,
+    )
+    client = FakeAsyncClient([redirect, FakeResponse()])
+
+    assert await extract_links_from_url_async(
+        client,
+        "https://example.test",
+        url_policy=UrlPolicy("https://example.test"),
+    ) == ["https://example.test/docs"]
+    assert client.requested_urls == [
+        "https://example.test",
+        "https://example.test/home",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_rejects_redirect_without_location(
+) -> None:
+    request = httpx.Request("GET", "https://example.test")
+    redirect = httpx.Response(302, request=request)
+
+    with pytest.raises(
+        httpx.HTTPError, match="redirect response missing Location"
+    ):
+        await extract_links_from_url_async(
+            FakeAsyncClient([redirect]), "https://example.test"
+        )
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_propagates_timeout() -> None:
+    class TimeoutClient:
+        async def get(
+            self, url: str, headers: dict, timeout: float
+        ) -> object:
+            raise httpx.ReadTimeout(
+                "request timed out", request=httpx.Request("GET", url)
+            )
+
+    with pytest.raises(httpx.ReadTimeout, match="request timed out"):
+        await extract_links_from_url_async(
+            TimeoutClient(), "https://example.test"
+        )
+
+
+@pytest.mark.asyncio
+async def test_extract_links_from_url_handles_real_httpx_response() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html"},
+            text='<a href="/docs">Docs</a>',
+            request=request,
+        )
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        assert await extract_links_from_url_async(
+            client, "https://example.test"
+        ) == ["https://example.test/docs"]
+
+
+@pytest.mark.asyncio
 async def test_extract_links_from_url_uses_retry_after_for_rate_limits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
