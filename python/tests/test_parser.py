@@ -107,7 +107,7 @@ async def test_extract_links_from_url_rejects_external_redirect() -> None:
     )
     client = FakeAsyncClient([redirect])
 
-    with pytest.raises(ExternalRedirectError, match="outside crawl host"):
+    with pytest.raises(ExternalRedirectError, match="outside original host"):
         await extract_links_from_url_async(
             client,
             "https://example.test",

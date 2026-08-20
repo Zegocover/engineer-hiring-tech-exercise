@@ -68,9 +68,12 @@ async def crawl_pages(
         return url, links, None
 
     async with httpx.AsyncClient(follow_redirects=False) as client:
-        pending = {base_url}
         visited: set[str] = set()
         url_policy = UrlPolicy(base_url)
+        normalized_base_url = url_policy.normalize(base_url)
+        if normalized_base_url is None:
+            raise ValueError("base URL is outside the crawl policy")
+        pending = {normalized_base_url}
         current_depth = 0
 
         while pending and (

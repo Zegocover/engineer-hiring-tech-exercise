@@ -149,7 +149,7 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
             raise httpx.HTTPStatusError(
                 "404 Not Found", request=request, response=response
             )
-        if url == "https://example.test":
+        if url == "https://example.test/":
             return [missing_url, working_url]
         return []
 
@@ -167,7 +167,7 @@ def test_cli_prints_page_error_and_continues_with_other_pages(
 def test_cli_prints_error_when_base_url_returns_404(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    base_url = "https://example.test"
+    base_url = "https://example.test/"
 
     async def fetch_links(
         client: httpx.AsyncClient,
@@ -193,7 +193,7 @@ def test_cli_prints_error_when_base_url_returns_404(
 def test_cli_skips_links_outside_the_base_domain(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    base_url = "https://example.test"
+    base_url = "https://example.test/"
     internal_url = "https://example.test/docs"
     external_url = "https://other.test/docs"
     subdomain_url = "https://www.example.test/docs"
@@ -223,7 +223,7 @@ def test_cli_skips_links_outside_the_base_domain(
 def test_cli_crawls_shared_target_only_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    base_url = "https://example.test"
+    base_url = "https://example.test/"
     first_url = "https://example.test/first"
     second_url = "https://example.test/second"
     deeper_url = "https://example.test/deeper"
@@ -256,10 +256,37 @@ def test_cli_crawls_shared_target_only_once(
     assert fetched_urls.count(shared_url) == 1
 
 
-def test_cli_limits_concurrent_fetches(
+def test_cli_normalizes_base_url_before_crawling(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_url = "https://example.test"
+    canonical_base_url = "https://example.test/"
+    fetched_urls: list[str] = []
+
+    async def fetch_links(
+        client: httpx.AsyncClient,
+        url: str,
+        include_duplicates: bool = False,
+        url_policy: object | None = None,
+    ) -> list[str]:
+        fetched_urls.append(url)
+        if url == canonical_base_url:
+            return [canonical_base_url]
+        return []
+
+    monkeypatch.setattr(
+        "site_crawler.cli.extract_links_from_url_async", fetch_links
+    )
+
+    main([base_url, "--depth", "1"])
+
+    assert fetched_urls == [canonical_base_url]
+
+
+def test_cli_limits_concurrent_fetches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_url = "https://example.test/"
     page_urls = [
         f"https://example.test/page-{page_number}" for page_number in range(5)
     ]
@@ -307,7 +334,7 @@ def test_cli_continues_after_request_error(
                 "connection failed",
                 request=httpx.Request("GET", url),
             )
-        if url == "https://example.test":
+        if url == "https://example.test/":
             return [failed_url, working_url]
         return []
 

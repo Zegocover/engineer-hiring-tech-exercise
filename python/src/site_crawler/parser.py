@@ -109,7 +109,7 @@ async def extract_links_from_url_async(
                 timeout=REQUEST_TIMEOUT,
             )
 
-            # Verify we're not being redirected from the original domain to elsewhere
+            # Keep redirects within the original domain.
             if 300 <= response.status_code < 400:
                 location = response.headers.get("location")
                 if location is None:
