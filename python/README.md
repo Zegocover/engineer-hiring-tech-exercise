@@ -78,3 +78,74 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller and @ZEGODiogoAlves) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+---
+
+# Solution
+
+## Requirements
+
+### Interaction
+
+```
+$ python -m crawler https://example.com
+https://example.com/
+https://example.com/about
+https://other.example/news
+mailto:team@example.com
+```
+
+For each page found per crawl, it prints each distinct URL found on it as an absolute URL, regardless of scheme or
+content. "All URLs" is the distinct set — repetition is noise, not information. Crawling is limited to `text/html`
+pages.
+
+### Glossary
+
+| Term             | Definition                                                                                                                                                                                                                                                 |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| URL              | A URI as defined by [RFC 3986](https://www.rfc-editor.org/info/rfc3986/).                                                                                                                                                                                  |
+| Page             | A URL returning a successful `text/html` document.                                                                                                                                                                                                         |
+| URI Fragment     | The `#...` suffix of a URL; not sent to the server.                                                                                                                                                                                                        |
+| Domain           | A registered domain name identifying a website.                                                                                                                                                                                                            |
+| Host             | The hostname from a URL (e.g. `sub.example.com`), distinct from its registered domain and port.                                                                                                                                                             |
+| Link             | A URL from a page to another resource, printed once per page as an absolute URL. We read `<a href>` only.                                                                                                                                                  |
+| Crawl Politeness | Respecting access rules and request frequency. Here `robots.txt` ([RFC 9309](https://datatracker.ietf.org/doc/html/rfc9309)) controls access; pacing is out of scope. [Further reading](https://www.firecrawl.dev/glossary/web-crawling-apis/what-is-polite-crawling). |
+| URL frontier     | System that holds and decides the pages that will need to be visited next.                                                                                                                                                                                 |
+
+### Functional requirements
+
+| ID | Requirement                                                                       |
+|----|-----------------------------------------------------------------------------------|
+| F1 | Accept one absolute HTTP(S) base URL as a command-line argument.                  |
+| F2 | Crawl only within the same host. Subdomains are distinct hosts.                   |
+| F3 | Print each page's URL and each distinct link found on it. Exit 0 when successful. |
+| F4 | Exit code 1 if crawling the base URL fails.                                       |
+| F5 | Exit code 2 if the input is invalid.                                              |
+| F6 | Respect `robots.txt` if present and readable.                                     |
+| F7 | Errors print to `stderr`.                                                         |
+| F8 | Ignore URL fragments; they lead to the same page.                                 |
+| F9 | Tolerate failures beyond the initial URL. Report and continue.                    |
+
+### Non-functional requirements
+
+| ID  | Requirement                                                             |
+|-----|-------------------------------------------------------------------------|
+| NF1 | Performant: run as quickly as possible. Vague but valid here.           |
+| NF2 | Efficient: minimize redundant or repeated work.                         |
+| NF3 | Bounded: each page returns within a timeout (5s default, configurable). |
+| NF4 | Polite: respect `robots.txt` access rules.                              |
+
+### Out of scope
+
+| ID    | Item                      | Reason                                                                                                                                                                                              |
+|-------|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| OOS1  | Dynamic content           | Requires a headless browser; such tools are excluded by the brief.                                                                                                                                  |
+| OOS2  | Authentication or cookies | Simplicity. Each domain (and paths within) may have its own auth(z) model.                                                                                                                          |
+| OOS3  | Handle redirects          | Simplicity. Would require validating each hop and limiting the number of redirects. Relevant since most sites redirect `http` to `https`.                                                           |
+| OOS4  | Request pacing            | A static delay is simple but arbitrary; adaptive throttling requires more scope and is not standardized. More [here](https://www.firecrawl.dev/glossary/web-crawling-apis/what-is-polite-crawling). |
+| OOS5  | Retry policy              | Simplicity. The CLI would need to support it, and even then it may not be one-size-fits-all.                                                                                                        |
+| OOS6  | Multi-domain              | Excluded by the brief. It would also exacerbate the limitations of a single crawl.                                                                                                                  |
+| OOS7  | Improved output           | Simplicity as it is not specified by the brief. No tree-like printing.                                                                                                                              |
+| OOS8  | Security policies         | Assume non-malicious responses and pages fit in memory. Review other concerns with a security expert.                                                                                               |
+| OOS9  | Non-`text/html` pages     | Simplicity. `application/xhtml+xml` and other HTML-like types are still real pages.                                                                                                                 |
+| OOS10 | IPv6 literal URLs         | The brief scopes crawling by domain and subdomain; IPv6 literal hosts and their normalization are excluded.                                                                                         |
