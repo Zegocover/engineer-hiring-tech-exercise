@@ -141,11 +141,76 @@ pages.
 |-------|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | OOS1  | Dynamic content           | Requires a headless browser; such tools are excluded by the brief.                                                                                                                                  |
 | OOS2  | Authentication or cookies | Simplicity. Each domain (and paths within) may have its own auth(z) model.                                                                                                                          |
-| OOS3  | Handle redirects          | Simplicity. Would require validating each hop and limiting the number of redirects. Relevant since most sites redirect `http` to `https`.                                                           |
+| OOS3  | Handle redirects          | Simplicity. Following redirects while matching the brief requires validating each destination before requesting it. This matters because same-host HTTP-to-HTTPS redirects are common.              |
 | OOS4  | Request pacing            | A static delay is simple but arbitrary; adaptive throttling requires more scope and is not standardized. More [here](https://www.firecrawl.dev/glossary/web-crawling-apis/what-is-polite-crawling). |
 | OOS5  | Retry policy              | Simplicity. The CLI would need to support it, and even then it may not be one-size-fits-all.                                                                                                        |
-| OOS6  | Multi-domain              | Excluded by the brief. It would also exacerbate the limitations of a single crawl.                                                                                                                  |
+| OOS6  | Multi-domain              | Excluded by the brief.                                                                                                                                                                              |
 | OOS7  | Improved output           | Simplicity as it is not specified by the brief. No tree-like printing.                                                                                                                              |
-| OOS8  | Security policies         | Assume non-malicious responses and pages fit in memory. Review other concerns with a security expert.                                                                                               |
+| OOS8  | Security policies         | Assume non-malicious responses and pages fit in memory. We would need a security expert to advise.                                                                                                  |
 | OOS9  | Non-`text/html` pages     | Simplicity. `application/xhtml+xml` and other HTML-like types are still real pages.                                                                                                                 |
 | OOS10 | IPv6 literal URLs         | The brief scopes crawling by domain and subdomain; IPv6 literal hosts and their normalization are excluded.                                                                                         |
+| OOS11 | Observability             | A production system requires structured logs, metrics and sensible alerting rules.                                                                                                                  |
+
+## Design
+
+Mindful that this is a technical challenge, this section aims to be lean, focus on the main decisions made and defer implementation details to the code.
+
+### Flow
+
+In a high-level view:
+1. Given a seed valid URL we fetch the `robots.txt` if present and register the policy (see [politeness](#politeness)).
+2. Then per-page:
+   1. Fetch the page and its body (using [`HTTPX`](https://www.python-httpx.org/)). Non-2xx including redirects `3xx` are considered as failures.
+   2. Extract `<a href>` (using [`lxml`](https://github.com/lxml/lxml)) and route the resulting URLs:
+      1. Into `frontier`, which decides the next set of URLs to visit based on `robots.txt` and previously seen pages.
+      2. To the CLI for reporting. For example, uncrawled URLs are still URLs and should be printed.
+   3. Normalize each link for identity and mark it seen before enqueueing.
+3. Finish the process once all pages have been visited.
+
+### Performance
+
+Web crawling is I/O intensive therefore most time is spent waiting for servers to return the requested page:
+1. I/O interactions are asynchronous to ensure the calling thread is not blocked. Using coroutines (cooperative concurrency) since it is idiomatic in Python (I am familiar with it from Kotlin), and it promotes lock-free concurrency.
+2. Track each page visited to ensure we do not visit them again. Assuming that the page hasn't changed since.
+3. Using working queues with the URLs to visit: 
+   1. Bounded concurrency as work is distributed among `N` workers that won't wait for one another.
+   2. Cleaner definition of 'done' as it maps directly to waiting for the queue to empty itself.
+   3. Queues are unbounded to avoid deadlocking in case the queue is full and all workers wait for it to free up.
+
+Misc optimizations:
+- High: Verify `Content-Type` before fetching the body of the page.
+- Minor: Use Keep Alive to reduce initial (trivial) latency. Sensible since crawling is limited to a single host.
+
+### Politeness
+
+This is a fairly complex topic. For the scope of this project:
+- Respect `robots.txt` to decide which pages are allowed to be fetched.
+- Timing is out of scope since there is no standard:
+  - **Frequency**: A static delay is simpler than adaptive throttling, which may be faster but must reason about `Crawl-delay`, `429`, `Retry-After`, etc. I would start at 100ms from my reading, but a proper policy requires further scoping; this implementation favors the brief's ask for speed.
+  - **When**: Owners may prefer off-peak hours. That would require a smart scheduler.
+
+Politeness rules are mapped under dedicated files based on `robots.txt` if present. Open for extension, which will require further scoping since not all webservers behave and expect the same.
+
+### Testing
+
+The tests are split as follows:
+- [Unit Tests](tests/unit): focus on happy and unhappy path.
+- [Integration tests](tests/integration/cases): data-driven as it is intuitive, easier to extend and act as self-documenting artifacts without overly coupling with the UX.
+- [Smoke Tests](tests/cli): simple cli-based tests focused on the UX interactions.
+
+### CLI
+
+Kept the simpler `python -m crawler` over packaging a binary.
+
+### Configuration
+
+Behaviour is tuned via `CRAWLER_*` environment variables to leave the CLI interface alone.
+
+### Further work
+
+The [out-of-scope table](#out-of-scope) covers how I would make single-host crawls more robust.
+
+Then I would scope multi-domain crawls around:
+- A long-running service with a persistent frontier, scheduler and durable queue.
+- Per-host configuration for concurrency, rate limits, authentication and crawl windows.
+- Dynamic priorities to determine which crawls run first.
