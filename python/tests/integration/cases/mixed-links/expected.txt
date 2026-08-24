@@ -1,0 +1,7 @@
+/
+/a.html
+http://example.org/x
+mailto:hi@example.org
+/data.json
+
+/a.html
