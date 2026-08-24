@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import asyncio
 
-import httpx
 import pytest
 
 from crawler.cli import main
 from crawler.config import Config
-from crawler.webcrawler import pool
-from crawler.webcrawler.work import Outcome, Page
+from crawler.webcrawler.crawl import crawl
+from crawler.webcrawler.outcome import Outcome, Page
 from tests.support import CASES_DIR, serve_dir
 
 CASE_NAMES = sorted(p.name for p in CASES_DIR.iterdir() if p.is_dir())
@@ -40,8 +39,7 @@ def _crawl(start: str) -> list[Page]:
             pages.append(outcome)
 
     async def go() -> None:
-        async with httpx.AsyncClient() as client:
-            await pool.run(start, client, Config(), report)
+        await crawl(start, Config(), report)
 
     asyncio.run(go())
     return pages
