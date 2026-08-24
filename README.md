@@ -44,6 +44,7 @@ team of engineers that thrive on challenge and innovation.
 
 This repository contains the tests for the following roles:
 
+- [Go Developer](go/README.md)
 - [Python Developer](python/README.md)
 - [Front-end Developer](front-end/README.md)
 
