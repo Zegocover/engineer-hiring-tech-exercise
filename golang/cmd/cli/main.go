@@ -44,7 +44,19 @@ func Run(ctx context.Context, slogger *slog.Logger, args []string) error {
 
 	client := client.NewClient()
 	crawler := crawler.NewCrawler(client)
-	crawler.Crawl(ctx, slogger, seedUrl)
+
+	report, err := crawler.Crawl(ctx, slogger, seedUrl)
+	if err != nil {
+		return fmt.Errorf("crawler seed url %s: %w", seedRawUrl, err)
+	}
+
+	for i := range report.External {
+		slogger.Debug("External Links", "url", report.External[i].String())
+	}
+
+	for i := range report.Internal {
+		slogger.Debug("Internal links", "url", report.Internal[i].String())
+	}
 
 	return nil
 }

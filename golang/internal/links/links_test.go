@@ -20,6 +20,11 @@ func TestClient_Traversal(t *testing.T) {
 			wantValue: []*url.URL{mustParseURL(t, "https://example.com/about")},
 		},
 		{
+			name:      "HappyPath_Absolute",
+			input:     `<html><body><a href="https://other.com/about">About</a></body></html>`,
+			wantValue: []*url.URL{mustParseURL(t, "https://other.com/about")},
+		},
+		{
 			name:      "HappyPath_RootRelative",
 			input:     `<html><body><a href="/about">About</a></body></html>`,
 			wantValue: []*url.URL{mustParseURL(t, "https://example.com/about")},

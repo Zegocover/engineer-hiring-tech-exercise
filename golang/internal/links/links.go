@@ -8,8 +8,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-type Links struct{}
-
 // GetAll extracts href attribute values from anchor elements in buf.
 // It returns the values as parsed from HTML, without resolving URLs, removing
 // fragments, filtering schemes or hostnames, or deduplicating links.
@@ -59,8 +57,8 @@ func GetAll(base *url.URL, buf string) ([]*url.URL, error) {
 		resolved.Fragment = ""
 		resolved.RawFragment = ""
 
-		// we only want https pages, drop mailto, tel, javascript, data
-		if resolved.Scheme != "https" {
+		// Keep HTTP(S) pages; drop mailto, tel, javascript, and data links.
+		if resolved.Scheme != "http" && resolved.Scheme != "https" {
 			continue
 		}
 
