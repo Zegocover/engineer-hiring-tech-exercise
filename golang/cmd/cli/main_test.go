@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,12 @@ func TestRun(t *testing.T) {
 			seedUrl: "/index.html",
 			folder:  "testdata/base/site",
 			wanted:  "testdata/base/crawl_output.txt",
+		},
+		{
+			name:    "HappyPath_CircularDependency",
+			seedUrl: "/start.html",
+			folder:  "testdata/cycle/site",
+			wanted:  "testdata/cycle/crawl_output.txt",
 		},
 		{
 			name:    "HappyPath_Full",
@@ -59,7 +66,11 @@ func TestRun(t *testing.T) {
 			fixture, err := os.ReadFile(tt.wanted)
 			require.NoError(t, err)
 			wanted := strings.ReplaceAll(string(fixture), "{{baseURL}}", server.URL)
-			assert.Equal(t, wanted, output.String())
+			wantURLs := strings.Fields(wanted)
+			gotURLs := strings.Fields(output.String())
+			slices.Sort(wantURLs)
+			slices.Sort(gotURLs)
+			assert.Equal(t, wantURLs, gotURLs)
 		})
 	}
 }

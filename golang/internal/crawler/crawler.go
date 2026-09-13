@@ -18,44 +18,55 @@ func NewCrawler(client *client.Client) *Crawler {
 	return &Crawler{client: client}
 }
 
-func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.URL) ([]*url.URL, error) {
+func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.URL) ([]string, error) {
+	visited := make(map[string]struct{})
+
 	pendingUrls := NewQueue(seedUrl)
 
-	var visited []*url.URL
-
 	for nextURL := pendingUrls.Next(); nextURL != nil; nextURL = pendingUrls.Next() {
-		slogger.Debug("Next url", "url", nextURL.String())
+		l := slogger.With(slog.String("url", nextURL.String()))
 
-		res, err := c.client.Request(ctx, nextURL)
-		if err != nil {
-			//TODO: add to the list of not visited
-			return nil, fmt.Errorf("client requesting %s: %w", nextURL, err)
+		l.Debug("Process url")
+
+		if isDomainLink(seedUrl, nextURL) {
+			res, err := c.client.Request(ctx, nextURL)
+			if err != nil {
+				//TODO: add retries or deadletter queue
+				return nil, fmt.Errorf("client requesting %s: %w", nextURL, err)
+			}
+
+			links, err := links.Extract(nextURL, res)
+			if err != nil {
+				// TODO: deal with the error here
+				return nil, fmt.Errorf("get all links: %w", err)
+			}
+
+			var countNew int
+			for i := range links {
+				if _, ok := visited[links[i].String()]; !ok {
+					l.Debug("Enqueue next url", "url", links[i].String())
+					pendingUrls.Append(links[i])
+					countNew++
+				}
+			}
+
+			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "visted_links", len(links)-countNew)
 		}
 
-		links, err := links.Extract(nextURL, res)
-		if err != nil {
-			// TODO: deal with the error here
-			return nil, fmt.Errorf("get all links: %w", err)
-		}
-
-		slogger.Debug("Got %d links", "url", len(links))
-
-		visited = append(visited, links...)
-
-		pendingUrls.Append(onlyDomainLinks(seedUrl, links))
+		visited[nextURL.String()] = struct{}{}
 	}
 
-	return visited, nil
+	// Collect Results
+	var result []string
+	for s := range visited {
+		result = append(result, s)
+	}
+
+	return result, nil
 }
 
-func onlyDomainLinks(baseUrl *url.URL, links []*url.URL) []*url.URL {
-	var out []*url.URL
-	for i := range links {
-		if links[i].Hostname() == baseUrl.Hostname() {
-			out = append(out, links[i])
-		}
-	}
-	return out
+func isDomainLink(baseUrl *url.URL, link *url.URL) bool {
+	return link.Hostname() == baseUrl.Hostname()
 }
 
 type Queue struct {
@@ -66,8 +77,8 @@ func NewQueue(u *url.URL) Queue {
 	return Queue{store: []*url.URL{u}}
 }
 
-func (q *Queue) Append(u []*url.URL) {
-	q.store = append(q.store, u...)
+func (q *Queue) Append(u *url.URL) {
+	q.store = append(q.store, u)
 }
 
 func (q *Queue) Next() *url.URL {

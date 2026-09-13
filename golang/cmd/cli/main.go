@@ -52,7 +52,7 @@ func Run(ctx context.Context, slogger *slog.Logger, args []string, writer io.Wri
 	}
 
 	for i := range res {
-		if _, err := fmt.Fprintln(writer, res[i].String()); err != nil {
+		if _, err := fmt.Fprintln(writer, res[i]); err != nil {
 			return fmt.Errorf("writing URL: %w", err)
 		}
 	}

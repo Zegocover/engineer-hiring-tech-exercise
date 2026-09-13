@@ -1,12 +1,15 @@
 package crawler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +21,7 @@ func TestCrawl(t *testing.T) {
 	tests := []struct {
 		name      string
 		handler   http.HandlerFunc
-		wantValue []*url.URL
+		wantValue []string
 		wantError string
 	}{
 		{
@@ -39,16 +42,17 @@ func TestCrawl(t *testing.T) {
 				<a href="mailto:hello@example.com">Email</a>`
 				_, _ = w.Write([]byte(strings.ReplaceAll(body, "{{host}}", r.Host)))
 			},
-			wantValue: []*url.URL{
-				mustParseURL(t, "http://fixture.test/absolute"),
-				mustParseURL(t, "http://fixture.test/root"),
-				mustParseURL(t, "http://fixture.test/blog/relative"),
-				mustParseURL(t, "http://fixture.test/parent"),
-				mustParseURL(t, "http://fixture.test/scheme"),
-				mustParseURL(t, "http://fixture.test/blog/post?page=2"),
-				mustParseURL(t, "http://fixture.test/fragment"),
-				mustParseURL(t, "http://fixture.test/about"),
-				mustParseURL(t, "https://example.com/external"),
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/absolute",
+				"http://fixture.test/root",
+				"http://fixture.test/blog/relative",
+				"http://fixture.test/parent",
+				"http://fixture.test/scheme",
+				"http://fixture.test/blog/post?page=2",
+				"http://fixture.test/fragment",
+				"http://fixture.test/about",
+				"https://example.com/external",
 			},
 		},
 		{
@@ -72,12 +76,13 @@ func TestCrawl(t *testing.T) {
 				}
 				_, _ = w.Write([]byte(body))
 			},
-			wantValue: []*url.URL{
-				mustParseURL(t, "http://fixture.test/docs/start"),
-				mustParseURL(t, "http://fixture.test/about"),
-				mustParseURL(t, "http://fixture.test/docs/guides/setup"),
-				mustParseURL(t, "http://fixture.test/docs/reference"),
-				mustParseURL(t, "https://example.com/reference"),
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/docs/start",
+				"http://fixture.test/about",
+				"http://fixture.test/docs/guides/setup",
+				"http://fixture.test/docs/reference",
+				"https://example.com/reference",
 			},
 		},
 		{
@@ -86,7 +91,27 @@ func TestCrawl(t *testing.T) {
 				body := `<a href="https://sub.{{host}}/about">Subdomain</a>`
 				_, _ = w.Write([]byte(strings.ReplaceAll(body, "{{host}}", r.Host)))
 			},
-			wantValue: []*url.URL{mustParseURL(t, "https://sub.fixture.test/about")},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"https://sub.fixture.test/about",
+			},
+		},
+		{
+			name: "HappyPath_CircularDependency",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/blog/post":
+					_, _ = w.Write([]byte(`<a href="/about">About</a>`))
+				case "/about":
+					_, _ = w.Write([]byte(`<a href="/blog/post">Back to post</a>`))
+				default:
+					http.NotFound(w, r)
+				}
+			},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/about",
+			},
 		},
 		{
 			name: "HappyPath_NoLinks",
@@ -94,11 +119,16 @@ func TestCrawl(t *testing.T) {
 				body := `<p>No links</p>`
 				_, _ = w.Write([]byte(strings.ReplaceAll(body, "{{host}}", r.Host)))
 			},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+			defer cancel()
 			server := httptest.NewServer(tt.handler)
 
 			t.Cleanup(server.Close)
@@ -108,27 +138,20 @@ func TestCrawl(t *testing.T) {
 
 			wantValue := replaceFixtureHost(tt.wantValue, seed.Host)
 
-			got, err := NewCrawler(client.NewClient()).Crawl(t.Context(), slog.Default(), seed)
-			require.NoError(t, err)
+			gotValue, gotErr := NewCrawler(client.NewClient()).Crawl(ctx, slog.Default(), seed)
+			require.NoError(t, gotErr)
 
-			assert.Equal(t, wantValue, got)
+			slices.Sort(wantValue)
+			slices.Sort(gotValue)
+			assert.Equal(t, wantValue, gotValue)
 		})
 	}
 }
 
-func replaceFixtureHost(urls []*url.URL, host string) []*url.URL {
-	var result []*url.URL
+func replaceFixtureHost(urls []string, host string) []string {
+	var result []string
 	for i := range urls {
-		u := *urls[i]
-		u.Host = strings.ReplaceAll(u.Host, "fixture.test", host)
-		result = append(result, &u)
+		result = append(result, strings.ReplaceAll(urls[i], "fixture.test", host))
 	}
 	return result
-}
-
-func mustParseURL(t *testing.T, rawURL string) *url.URL {
-	t.Helper()
-	u, err := url.Parse(rawURL)
-	require.NoError(t, err)
-	return u
 }
