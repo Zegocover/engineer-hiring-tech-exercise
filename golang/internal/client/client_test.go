@@ -3,6 +3,7 @@ package client
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +48,11 @@ func TestClient_Request(t *testing.T) {
 			t.Cleanup(server.Close)
 
 			client := NewClient()
-			got, err := client.Request(t.Context(), server.URL)
+
+			serverURL, err := url.Parse(server.URL)
+			assert.NoError(t, err)
+
+			got, err := client.Request(t.Context(), serverURL)
 
 			if tt.wantErr != nil {
 				assert.ErrorContains(t, err, tt.wantErr.Error())

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type HTTPError struct {
@@ -28,8 +29,8 @@ func NewClient() *Client {
 	return new(Client)
 }
 
-func (c *Client) Request(ctx context.Context, rawUrl string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawUrl, http.NoBody)
+func (c *Client) Request(ctx context.Context, u *url.URL) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("creating HTTP request: %w", err)
 	}
