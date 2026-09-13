@@ -69,7 +69,7 @@ func TestClient_Traversal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			base := mustParseURL(t, "https://example.com")
 
-			gotValue, gotErr := GetAll(base, tt.input)
+			gotValue, gotErr := Extract(base, tt.input)
 			require.NoError(t, gotErr)
 
 			assert.Equal(t, tt.wantValue, gotValue)

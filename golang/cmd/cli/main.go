@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/url"
 	"os"
@@ -22,7 +23,7 @@ func main() {
 	}))
 	slogger.Info("Starting crawler")
 
-	if err := Run(ctx, slogger, os.Args[1:]); err != nil && !errors.Is(err, context.Canceled) {
+	if err := Run(ctx, slogger, os.Args[1:], os.Stdout); err != nil && !errors.Is(err, context.Canceled) {
 		slogger.Error("Found an error while running", "error", err)
 		os.Exit(1)
 	}
@@ -30,7 +31,7 @@ func main() {
 	slogger.Info("Exited")
 }
 
-func Run(ctx context.Context, slogger *slog.Logger, args []string) error {
+func Run(ctx context.Context, slogger *slog.Logger, args []string, writer io.Writer) error {
 	if len(args) < 1 {
 		return fmt.Errorf("not enough arguments")
 	}
@@ -45,17 +46,15 @@ func Run(ctx context.Context, slogger *slog.Logger, args []string) error {
 	client := client.NewClient()
 	crawler := crawler.NewCrawler(client)
 
-	report, err := crawler.Crawl(ctx, slogger, seedUrl)
+	res, err := crawler.Crawl(ctx, slogger, seedUrl)
 	if err != nil {
 		return fmt.Errorf("crawler seed url %s: %w", seedRawUrl, err)
 	}
 
-	for i := range report.External {
-		slogger.Debug("External Links", "url", report.External[i].String())
-	}
-
-	for i := range report.Internal {
-		slogger.Debug("Internal links", "url", report.Internal[i].String())
+	for i := range res {
+		if _, err := fmt.Fprintln(writer, res[i].String()); err != nil {
+			return fmt.Errorf("writing URL: %w", err)
+		}
 	}
 
 	return nil

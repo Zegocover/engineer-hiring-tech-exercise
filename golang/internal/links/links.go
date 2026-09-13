@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-// GetAll extracts href attribute values from anchor elements in buf.
+// Extract extracts href attribute values from anchor elements in buf.
 // It returns the values as parsed from HTML, without resolving URLs, removing
 // fragments, filtering schemes or hostnames, or deduplicating links.
 //
@@ -33,7 +33,7 @@ import (
 //   - data:...: Embedded data; do not fetch.
 //   - https://other.com/page: External hostname; report the link without crawling it.
 //   - https://sub.example.com/page: Subdomain with a different hostname; report without crawling it.
-func GetAll(base *url.URL, buf string) ([]*url.URL, error) {
+func Extract(base *url.URL, buf string) ([]*url.URL, error) {
 	reader := strings.NewReader(buf)
 
 	doc, err := html.Parse(reader)
