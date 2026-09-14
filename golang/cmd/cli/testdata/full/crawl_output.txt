@@ -1,0 +1,11 @@
+{{baseURL}}/
+{{baseURL}}/about.html
+{{baseURL}}/blog/post.html
+{{baseURL}}/search.html?q=crawler&page=2
+http://example.com/page
+https://sub.example.com/page
+{{baseURL}}/contact.html
+{{baseURL}}/guide.html
+{{baseURL}}/blog/details.html
+{{baseURL}}/docs/start.html
+https://docs.example.com/reference
