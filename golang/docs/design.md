@@ -25,15 +25,17 @@ can depend on rule order, so this is not claimed as full RFC 9309 compliance.
 
 Blocked URLs are reported without fetching them. A 4xx robots response allows
 crawling; network failures, parser errors, and other unsuccessful responses
-stop the crawl or deny access when parsing fails. Malformed lines tolerated by the module do not prevent using
-its parsed rules. Context errors propagate to the caller. HTTP requests have a
-ten-second timeout.
+stop the crawl or deny access when parsing fails. Malformed lines tolerated by
+the module do not prevent using its parsed rules. Context errors during robots
+retrieval propagate to the caller; cancellation during crawling returns partial
+results with a nil error. No overall HTTP request timeout is configured;
+requests use the caller’s context.
 
-Redirects remain disabled until destination checks are implemented: a page
-redirect returns an HTTP error and a robots redirect blocks its origin.
+The HTTP client rejects all redirects. Page redirects are reported as HTTP
+errors; a robots.txt redirect stops the crawl as a retrieval failure.
 `Crawl-delay` and sitemaps are not acted on. Response-size limits and concurrent
 cache access remain future work.
 
-The file-server integration fixture under `cmd/cli/testdata/robots` checks that
-rules are fetched once, allowed pages are fetched, and blocked pages receive
-zero requests while remaining in output.
+## Concurrency approach
+
+I chose a fixed worker pool because HTTP requests are the slowest part of the crawl. Workers fetch pages and extract links concurrently, while a single coordinator owns the queue, tracks scheduled URLs, and collects results. This avoids explicit mutex protection for shared crawl state, although channels still provide synchronization. The worker count bounds concurrent requests, but queue and result memory can grow. An alternative is a mutex-protected queue with a separate result collector; a ring buffer is one possible queue implementation.

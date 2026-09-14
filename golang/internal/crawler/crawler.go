@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"sync"
 
 	"zego.com/engineer-hiring-tech-exercise/internal/client"
 	"zego.com/engineer-hiring-tech-exercise/internal/links"
@@ -20,6 +21,9 @@ func NewCrawler(client *client.Client) *Crawler {
 }
 
 func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.URL) ([]string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	visited := make(map[string]struct{})
 
 	policies, err := robots.Load(ctx, c.client, seedUrl)
@@ -27,50 +31,128 @@ func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.
 		return nil, fmt.Errorf("loading robots rules: %w", err)
 	}
 
-	pendingUrls := NewUniqueQueue(seedUrl)
+	inputCh := make(chan *url.URL)
+	resultCh := make(chan Result)
 
-	for nextURL := pendingUrls.Next(); nextURL != nil; nextURL = pendingUrls.Next() {
-		l := slogger.With(slog.String("url", nextURL.String()))
-
-		l.Debug("Process url")
-
-		if isDomainLink(seedUrl, nextURL) {
-			if !policies.Allowed(nextURL) {
-				visited[nextURL.String()] = struct{}{}
-				continue
-			}
-
-			res, err := c.client.Request(ctx, nextURL)
-			if err != nil {
-				l.ErrorContext(ctx, "Failed to request page", "error", err)
-			}
-
-			links, err := links.Extract(nextURL, res)
-			if err != nil {
-				l.ErrorContext(ctx, "Failed to extract links", "error", err)
-			}
-
-			var countNew int
-			for i := range links {
-				if pendingUrls.Append(links[i]) {
-					l.Debug("Enqueue next url", "url", links[i].String())
-					countNew++
-				}
-			}
-
-			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "already_scheduled", len(links)-countNew)
-		}
-
-		visited[nextURL.String()] = struct{}{}
+	var wg sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		l := slogger.With("workerID", i)
+		wg.Go(func() { c.worker(ctx, l, inputCh, resultCh) })
 	}
 
+	defer func() {
+		cancel()
+		close(inputCh)
+		wg.Wait()
+	}()
+
+	queue := NewUniqueQueue(seedUrl)
+	inProgress := 0
+
+	for {
+		// exited trap
+		if err := ctx.Err(); err != nil {
+			return c.collectRows(visited), nil
+		}
+
+		// exited
+		if queue.Size() == 0 && inProgress == 0 {
+			break
+		}
+
+		nextLink := queue.Peek()
+
+		var linkCh chan<- *url.URL
+
+		if nextLink != nil {
+			if isDomainLink(seedUrl, nextLink) && policies.Allowed(nextLink) {
+				linkCh = inputCh
+			} else {
+				visited[nextLink.String()] = struct{}{}
+				queue.Next()
+				continue
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return c.collectRows(visited), nil
+		case linkCh <- nextLink:
+			inProgress++
+			queue.Next()
+		case result := <-resultCh:
+			inProgress--
+			visited[result.URL.String()] = struct{}{}
+			if result.Err != nil {
+				slogger.Error("Something bad happen with crawling", "error", result.Err)
+				continue
+			}
+			for i := range result.Links {
+				if queue.Append(result.Links[i]) {
+					slogger.DebugContext(ctx, "Enqueue next url", "url", result.Links[i].String())
+				}
+			}
+		}
+	}
+
+	return c.collectRows(visited), nil
+}
+
+func (c *Crawler) collectRows(visited map[string]struct{}) []string {
 	// Collect Results
 	var result []string
 	for s := range visited {
 		result = append(result, s)
 	}
+	return result
+}
 
-	return result, nil
+// Result reports completion of a job, including failed requests.
+type Result struct {
+	URL   *url.URL
+	Links []*url.URL
+	Err   error
+}
+
+func (c *Crawler) worker(ctx context.Context, logger *slog.Logger, input <-chan *url.URL, output chan<- Result) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case u, ok := <-input:
+			if !ok {
+				return
+			}
+
+			if ctx.Err() != nil {
+				return
+			}
+
+			l := logger.With("url", u.String())
+			l.Debug("Worker process url")
+
+			result := Result{URL: u}
+
+			body, err := c.client.Request(ctx, u)
+			if err != nil {
+				result.Err = fmt.Errorf("requesting page %s: %w", u, err)
+				l.ErrorContext(ctx, "Failed to request page", "error", result.Err)
+			} else {
+				result.Links, err = links.Extract(u, body)
+				if err != nil {
+					result.Err = fmt.Errorf("extracting links from %s: %w", u, err)
+					l.ErrorContext(ctx, "Failed to extract links", "error", result.Err)
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case output <- result:
+			}
+		}
+	}
 }
 
 func isDomainLink(baseUrl *url.URL, link *url.URL) bool {
@@ -106,4 +188,15 @@ func (q *UniqueQueue) Next() *url.URL {
 	next := q.store[0]
 	q.store = q.store[1:]
 	return next
+}
+
+func (q *UniqueQueue) Peek() *url.URL {
+	if len(q.store) == 0 {
+		return nil
+	}
+	return q.store[0]
+}
+
+func (q *UniqueQueue) Size() int {
+	return len(q.store)
 }

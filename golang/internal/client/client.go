@@ -20,14 +20,16 @@ func (h *HTTPError) Error() string {
 	return fmt.Sprintf("HTTP %d: %s", h.Code, h.Message)
 }
 
-// TODO: add rate limiter
-// TODO: add otel
 type Client struct {
 	client http.Client
 }
 
 func NewClient() *Client {
-	return &Client{client: http.Client{}}
+	return &Client{client: http.Client{
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}}
 }
 
 func (c *Client) Request(ctx context.Context, u *url.URL) (string, error) {

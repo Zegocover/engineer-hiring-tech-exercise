@@ -4,9 +4,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClient_Request(t *testing.T) {
@@ -62,6 +64,30 @@ func TestClient_Request(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantValue, got)
+		})
+	}
+}
+
+func TestClientRejectsRedirects(t *testing.T) {
+	for _, code := range []int{http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect, http.StatusPermanentRedirect} {
+		t.Run(http.StatusText(code), func(t *testing.T) {
+			var fetched atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/target" {
+					fetched.Add(1)
+					return
+				}
+				http.Redirect(w, r, "/target", code)
+			}))
+			defer server.Close()
+			u, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			body, err := NewClient().Request(t.Context(), u)
+			var httpErr *HTTPError
+			require.ErrorAs(t, err, &httpErr)
+			require.Equal(t, code, httpErr.Code)
+			require.Empty(t, body)
+			require.Zero(t, fetched.Load())
 		})
 	}
 }
