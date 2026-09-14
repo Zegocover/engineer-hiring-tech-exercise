@@ -8,6 +8,8 @@ import (
 	"net/url"
 )
 
+const UserAgent = "ExerciseCrawler"
+
 type HTTPError struct {
 	Code    int
 	Message string
@@ -19,14 +21,13 @@ func (h *HTTPError) Error() string {
 }
 
 // TODO: add rate limiter
-// TODO: add header agent
 // TODO: add otel
 type Client struct {
 	client http.Client
 }
 
 func NewClient() *Client {
-	return new(Client)
+	return &Client{client: http.Client{}}
 }
 
 func (c *Client) Request(ctx context.Context, u *url.URL) (string, error) {
@@ -34,6 +35,8 @@ func (c *Client) Request(ctx context.Context, u *url.URL) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("creating HTTP request: %w", err)
 	}
+
+	req.Header.Set("User-Agent", UserAgent+"/1.0")
 
 	res, err := c.client.Do(req)
 	if err != nil {

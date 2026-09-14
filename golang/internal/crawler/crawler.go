@@ -8,6 +8,7 @@ import (
 
 	"zego.com/engineer-hiring-tech-exercise/internal/client"
 	"zego.com/engineer-hiring-tech-exercise/internal/links"
+	"zego.com/engineer-hiring-tech-exercise/internal/robots"
 )
 
 type Crawler struct {
@@ -21,7 +22,12 @@ func NewCrawler(client *client.Client) *Crawler {
 func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.URL) ([]string, error) {
 	visited := make(map[string]struct{})
 
-	pendingUrls := NewQueue(seedUrl)
+	policies, err := robots.Load(ctx, c.client, seedUrl)
+	if err != nil {
+		return nil, fmt.Errorf("loading robots rules: %w", err)
+	}
+
+	pendingUrls := NewUniqueQueue(seedUrl)
 
 	for nextURL := pendingUrls.Next(); nextURL != nil; nextURL = pendingUrls.Next() {
 		l := slogger.With(slog.String("url", nextURL.String()))
@@ -29,9 +35,14 @@ func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.
 		l.Debug("Process url")
 
 		if isDomainLink(seedUrl, nextURL) {
+			if !policies.Allowed(nextURL) {
+				visited[nextURL.String()] = struct{}{}
+				continue
+			}
+
 			res, err := c.client.Request(ctx, nextURL)
 			if err != nil {
-				//TODO: add retries or deadletter queue
+				//TODO: add retries or requeue again
 				return nil, fmt.Errorf("client requesting %s: %w", nextURL, err)
 			}
 
@@ -50,7 +61,7 @@ func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.
 				}
 			}
 
-			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "visted_links", len(links)-countNew)
+			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "already_visited", len(links)-countNew)
 		}
 
 		visited[nextURL.String()] = struct{}{}
@@ -69,19 +80,28 @@ func isDomainLink(baseUrl *url.URL, link *url.URL) bool {
 	return link.Hostname() == baseUrl.Hostname()
 }
 
-type Queue struct {
+type UniqueQueue struct {
 	store []*url.URL
+	seen  map[string]struct{}
 }
 
-func NewQueue(u *url.URL) Queue {
-	return Queue{store: []*url.URL{u}}
+func NewUniqueQueue(u *url.URL) UniqueQueue {
+	q := UniqueQueue{seen: make(map[string]struct{})}
+	q.Append(u)
+	return q
 }
 
-func (q *Queue) Append(u *url.URL) {
+func (q *UniqueQueue) Append(u *url.URL) bool {
+	key := u.String()
+	if _, exists := q.seen[key]; exists {
+		return false
+	}
+	q.seen[key] = struct{}{}
 	q.store = append(q.store, u)
+	return true
 }
 
-func (q *Queue) Next() *url.URL {
+func (q *UniqueQueue) Next() *url.URL {
 	if len(q.store) == 0 {
 		return nil
 	}

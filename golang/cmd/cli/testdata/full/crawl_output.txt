@@ -1,4 +1,4 @@
-{{baseURL}}/index.html
+{{baseURL}}/
 {{baseURL}}/about.html
 {{baseURL}}/blog/post.html
 {{baseURL}}/search.html?q=crawler&page=2

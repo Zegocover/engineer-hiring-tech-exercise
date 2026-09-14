@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +25,26 @@ func TestCrawl(t *testing.T) {
 		wantValue []string
 		wantError string
 	}{
+		{
+			name: "HappyPath_SelfLink",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				body := `<a href="/blog/post">Self</a>`
+				_, _ = w.Write([]byte(body))
+			},
+			wantValue: []string{"http://fixture.test/blog/post"},
+		},
+		{
+			name: "HappyPath_RobotsBlocksSeed",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/robots.txt" {
+					_, _ = w.Write([]byte("User-agent: *\nDisallow: /"))
+					return
+				}
+				t.Error("crawler fetched a robots-disallowed seed")
+				http.Error(w, "blocked page fetched", http.StatusInternalServerError)
+			},
+			wantValue: []string{"http://fixture.test/blog/post"},
+		},
 		{
 			name: "HappyPath_MatchHost",
 			handler: func(w http.ResponseWriter, r *http.Request) {
@@ -154,4 +175,30 @@ func replaceFixtureHost(urls []string, host string) []string {
 		result = append(result, strings.ReplaceAll(urls[i], "fixture.test", host))
 	}
 	return result
+}
+
+func TestCrawlFetchesEachURLOnce(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "DuplicateSelfLinks", body: `<a href="/">Self</a><a href="/">Self again</a>`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var count atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				count.Add(1)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			t.Cleanup(server.Close)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+			defer cancel()
+			seed, err := url.Parse(server.URL + "/")
+			require.NoError(t, err)
+			_, err = NewCrawler(client.NewClient()).Crawl(ctx, slog.Default(), seed)
+			require.NoError(t, err)
+			assert.Equal(t, int32(2), count.Load()) // robots.txt and the seed page
+		})
+	}
 }

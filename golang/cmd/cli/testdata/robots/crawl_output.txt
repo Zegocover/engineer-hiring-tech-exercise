@@ -1,0 +1,3 @@
+{{baseURL}}/
+{{baseURL}}/public.html
+{{baseURL}}/private.html
