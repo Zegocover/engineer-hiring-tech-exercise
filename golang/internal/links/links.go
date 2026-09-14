@@ -49,8 +49,8 @@ func Extract(base *url.URL, buf string) ([]*url.URL, error) {
 	var output []*url.URL
 	for i := range hyperlinks {
 		ref, err := url.Parse(hyperlinks[i])
-		if err != nil {
-			return nil, err
+		if err != nil { // bad pill, dont discard the rest
+			continue
 		}
 
 		resolved := base.ResolveReference(ref)

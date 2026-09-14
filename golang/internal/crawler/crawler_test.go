@@ -25,6 +25,60 @@ func TestCrawl(t *testing.T) {
 		wantValue []string
 		wantError string
 	}{
+
+		{
+			name: "HappyPath_ContinuesAfterNotFound",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/blog/post":
+					_, _ = w.Write([]byte(`<a href="/broken">Broken</a><a href="/about">About</a>`))
+				case "/broken":
+					http.Error(w, "page failed", http.StatusNotFound)
+				case "/about":
+					_, _ = w.Write([]byte(`<a href="/contact">Contact</a>`))
+				}
+			},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/broken",
+				"http://fixture.test/about",
+				"http://fixture.test/contact",
+			},
+		},
+
+		{
+			name: "HappyPath_ContinuesAfterServerError",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/blog/post":
+					_, _ = w.Write([]byte(`<a href="/broken">Broken</a><a href="/about">About</a>`))
+				case "/broken":
+					http.Error(w, "page failed", http.StatusInternalServerError)
+				case "/about":
+					_, _ = w.Write([]byte(`<a href="/contact">Contact</a>`))
+				}
+			},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/broken",
+				"http://fixture.test/about",
+				"http://fixture.test/contact",
+			},
+		},
+
+		{
+			name: "HappyPath_SkipsMalformedLink",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/blog/post" {
+					_, _ = w.Write([]byte(`<a href="/about">About</a><a href="/%zz">Invalid</a><a href="/contact">Contact</a>`))
+				}
+			},
+			wantValue: []string{
+				"http://fixture.test/blog/post",
+				"http://fixture.test/about",
+				"http://fixture.test/contact",
+			},
+		},
 		{
 			name: "HappyPath_SelfLink",
 			handler: func(w http.ResponseWriter, r *http.Request) {

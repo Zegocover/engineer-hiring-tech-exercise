@@ -8,11 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClient_Traversal(t *testing.T) {
+func TestLinks(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
 		wantValue []*url.URL
+		wantErr   string
 	}{
 		{
 			name:      "HappyPath_Absolute",
@@ -64,13 +65,32 @@ func TestClient_Traversal(t *testing.T) {
 			input:     `<html><body><a href="data:text/plain,hello">//example.com/about</a></body></html>`,
 			wantValue: nil,
 		},
+		{
+			name:      "HappyPath_Partial",
+			input:     `<html><body><a href="/about">About</a><a href="/%zz">Invalid</a><a href="/contact">Contact</a></body></html>`,
+			wantValue: []*url.URL{mustParseURL(t, "https://example.com/about"), mustParseURL(t, "https://example.com/contact")},
+		},
+		{
+			name:      "UnhappyPath_NoValidHref",
+			input:     `<html><body><a>No href</a><a href="mailto:hi@example.com">Email</a><a href="data:text/plain,hello">Data</a></body></html>`,
+			wantValue: nil,
+		},
+		{
+			name:      "HappyPath_SkipMalformedURL",
+			input:     `<a href="/%zz">Link</a>`,
+			wantValue: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			base := mustParseURL(t, "https://example.com")
 
 			gotValue, gotErr := Extract(base, tt.input)
-			require.NoError(t, gotErr)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, gotErr, tt.wantErr)
+			} else {
+				require.NoError(t, gotErr)
+			}
 
 			assert.Equal(t, tt.wantValue, gotValue)
 		})

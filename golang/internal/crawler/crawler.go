@@ -42,26 +42,23 @@ func (c *Crawler) Crawl(ctx context.Context, slogger *slog.Logger, seedUrl *url.
 
 			res, err := c.client.Request(ctx, nextURL)
 			if err != nil {
-				//TODO: add retries or requeue again
-				return nil, fmt.Errorf("client requesting %s: %w", nextURL, err)
+				l.ErrorContext(ctx, "Failed to request page", "error", err)
 			}
 
 			links, err := links.Extract(nextURL, res)
 			if err != nil {
-				// TODO: deal with the error here
-				return nil, fmt.Errorf("get all links: %w", err)
+				l.ErrorContext(ctx, "Failed to extract links", "error", err)
 			}
 
 			var countNew int
 			for i := range links {
-				if _, ok := visited[links[i].String()]; !ok {
+				if pendingUrls.Append(links[i]) {
 					l.Debug("Enqueue next url", "url", links[i].String())
-					pendingUrls.Append(links[i])
 					countNew++
 				}
 			}
 
-			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "already_visited", len(links)-countNew)
+			l.Debug("Result of process url", "total_links", len(links), "new_links", countNew, "already_scheduled", len(links)-countNew)
 		}
 
 		visited[nextURL.String()] = struct{}{}
