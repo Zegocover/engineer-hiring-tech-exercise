@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "site-crawler"
+version = "0.1.0"
+description = "Single-domain web crawler"
+requires-python = ">=3.9"
+dependencies = [
+  "aiohttp>=3.9",
+  "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+site-crawler = "site_crawler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

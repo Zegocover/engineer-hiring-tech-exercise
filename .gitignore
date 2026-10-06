@@ -1,0 +1,15 @@
+.venv/
+.deps/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+
+# Production sketches. Not part of the command-line app.
+*_placeholder.py
+*_placeholder.yaml
+*_placeholder.env
+deploy/

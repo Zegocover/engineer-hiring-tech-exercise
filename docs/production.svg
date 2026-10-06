@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="280" viewBox="0 0 960 280" role="img" aria-labelledby="title desc">
+  <title id="title">Production shape</title>
+  <desc id="desc">A job API writes work to a queue. Worker containers crawl with a per-host limit and store page results.</desc>
+  <rect width="960" height="280" rx="16" fill="#0f1419"/>
+  <text x="32" y="40" fill="#e7ecf3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700">If this ran for many sites</text>
+  <text x="32" y="64" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">The CLI stays a client. The queue and the results live outside the process.</text>
+
+  <rect x="32" y="100" width="180" height="120" rx="10" fill="#1c2430" stroke="#3d8bfd" stroke-width="1.5"/>
+  <text x="122" y="148" text-anchor="middle" fill="#e7ecf3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="650">Job API</text>
+  <text x="122" y="172" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">POST /crawls</text>
+  <text x="122" y="190" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">GET /crawls/{id}</text>
+
+  <rect x="268" y="100" width="180" height="120" rx="10" fill="#1c2430" stroke="#3d8bfd" stroke-width="1.5"/>
+  <text x="358" y="148" text-anchor="middle" fill="#e7ecf3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="650">Queue</text>
+  <text x="358" y="172" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">frontier survives</text>
+  <text x="358" y="190" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">a restart</text>
+
+  <rect x="504" y="100" width="200" height="120" rx="10" fill="#16261c" stroke="#3dd68c" stroke-width="1.5"/>
+  <text x="604" y="148" text-anchor="middle" fill="#e7ecf3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="650">Workers</text>
+  <text x="604" y="172" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">containers</text>
+  <text x="604" y="190" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">cap per host</text>
+
+  <rect x="760" y="100" width="168" height="120" rx="10" fill="#1c2430" stroke="#3d8bfd" stroke-width="1.5"/>
+  <text x="844" y="148" text-anchor="middle" fill="#e7ecf3" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="650">Store</text>
+  <text x="844" y="172" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">page report</text>
+  <text x="844" y="190" text-anchor="middle" fill="#9aa6b2" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">and errors</text>
+
+  <path d="M212 160 H268" stroke="#6b7c93" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M448 160 H504" stroke="#6b7c93" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M704 160 H760" stroke="#6b7c93" stroke-width="1.5" marker-end="url(#a)"/>
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0 0 L6 3 L0 6 Z" fill="#6b7c93"/>
+    </marker>
+  </defs>
+</svg>
