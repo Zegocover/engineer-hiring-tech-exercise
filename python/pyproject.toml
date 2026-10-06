@@ -1,0 +1,63 @@
+[project]
+name = "site-crawler"
+version = "0.1.0"
+description = "A fast, single-domain web crawler that prints each page and the links found on it."
+authors = [{ name = "Monika Bronska" }]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28",
+    "beautifulsoup4>=4.13",
+    "lxml>=5.3",
+]
+
+[project.scripts]
+crawl = "crawler.cli:main"
+
+[tool.poetry]
+packages = [{ include = "crawler", from = "src" }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-asyncio = "^0.24"
+respx = "^0.22"
+pytest-cov = "^6.0"
+ruff = "^0.8"
+mypy = "^1.13"
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ---------------------------------------------------------------------------
+# Tooling
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# A pragmatic-but-strict default: pyflakes, pycodestyle, isort, bugbear,
+# comprehensions, pyupgrade, and simplify.
+select = ["E", "F", "I", "B", "C4", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=crawler --cov-report=term-missing"
+
+[tool.coverage.run]
+# __main__.py is a thin `sys.exit(main())` shim exercised via `python -m crawler`.
+omit = ["*/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
