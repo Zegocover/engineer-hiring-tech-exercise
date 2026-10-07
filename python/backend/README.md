@@ -10,6 +10,9 @@ Each crawl follows the same rules as the `crawl` command:
 - It fetches each normalised URL once.
 - It respects robots.txt unless the request turns that off.
 
+A web dashboard for this API (Next.js) lives in [`front-end/`](../../front-end/README.md#solution-crawler-dashboard).
+It calls the API from its own server, so the API needs no CORS setup.
+
 ## Running it
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The `site-crawler` library is installed from the parent
