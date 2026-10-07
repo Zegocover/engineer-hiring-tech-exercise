@@ -11,11 +11,11 @@ import logging
 import uuid
 from collections.abc import Callable, Sequence
 
-from site_crawler import Crawler, DefaultSelectolaxParser
+from site_crawler import Crawler
 from site_crawler.interfaces import Fetcher
 from site_crawler.models import CrawlConfig
 
-from crawler_api.adapters import JobWriter
+from crawler_api.adapters import JobWriter, StdlibHtmlParser
 from crawler_api.jobs import CrawlJob, InMemoryJobStore, JobStatus, JobStore, utcnow
 from crawler_api.settings import Settings
 
@@ -92,7 +92,7 @@ class CrawlService:
         crawler = Crawler(
             config,
             fetcher=self._fetcher_factory(),
-            parser=DefaultSelectolaxParser(),
+            parser=StdlibHtmlParser(),
             writer=JobWriter(job),
         )
         job.stats = crawler.stats

@@ -121,7 +121,9 @@ The service gives every crawl its components explicitly:
 - **Fetcher:** a `SharedClientFetcher`. It reuses the library's `DefaultHttpxFetcher` retry logic over the app's
   single client. Its `aclose()` does nothing, because the crawler closes its fetcher when a crawl ends but the
   client is shared with every other crawl.
-- **Parser:** the library's `DefaultSelectolaxParser`.
+- **Parser:** a `StdlibHtmlParser`, built on Python's standard-library `html.parser`. It returns the same links as
+  the library's selectolax-based default; `tests/test_parser.py` checks that on 26 tricky HTML cases. The one
+  difference is in its favour: it honours the charset in the `Content-Type` header, which selectolax ignores.
 - **Writer:** a `JobWriter`, which appends each page to its job and keeps a de-duplicated index of links, so the
   links endpoint is a cheap slice.
 
@@ -132,6 +134,10 @@ On shutdown, running crawls are cancelled and awaited before the client is close
 
 ## Limitations
 
+- **Parsing is pure Python, so it's slower than selectolax.** On a 207 KiB page with 1,500 links it takes about
+  28 ms against selectolax's 3 ms (typical pages: roughly 3-14 ms). Parsing runs on the event loop, so very large
+  pages hold it briefly; network time still dominates crawls. A `<meta charset>` tag isn't read (selectolax doesn't
+  read it either here), so such pages are decoded as UTF-8 unless the header names the charset.
 - **In memory only.** Jobs and results are lost on restart and never evicted. The page budgets bound each crawl,
   and `JobStore` is the place to plug in a bounded or persistent store.
 - **No authentication, and no protection against crawling internal addresses (SSRF).** Run it locally or behind

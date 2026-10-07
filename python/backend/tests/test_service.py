@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from site_crawler.models import ConfigError
+from site_crawler.models import ConfigError, FetchError, FetchResult
 
 from crawler_api.jobs import CrawlJob, JobStatus
 from crawler_api.service import (
@@ -63,6 +63,26 @@ async def test_cross_domain_options_reach_the_crawl() -> None:
     assert job.config.allowed_hosts == ("docs.partner.io",)
     assert job.config.per_host_concurrency == 2
     assert "https://docs.partner.io/guide" in site.calls
+
+
+class Latin1Page:
+    """Serves one latin-1 page that declares its charset only in the Content-Type header."""
+
+    async def fetch(self, url: str) -> FetchResult:
+        if url != BASE:
+            raise FetchError(url, "HTTP 404")
+        body = '<a href="/café">c</a>'.encode("latin-1")
+        return FetchResult(url, url, 200, "text/html; charset=ISO-8859-1", body)
+
+    async def aclose(self) -> None:
+        pass
+
+
+async def test_crawls_parse_pages_with_the_stdlib_parser() -> None:
+    # The one input where the parsers differ: selectolax would report "/caf�".
+    service = CrawlService(Settings(), Latin1Page)
+    job = await finished(service.start(BASE, respect_robots=False))
+    assert job.pages[0].links == ("https://example.com/café",)
 
 
 async def test_seed_failure_fails_crawl() -> None:
