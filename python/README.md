@@ -300,6 +300,15 @@ into a service:
 - **Storage** is just another `Writer`. A natural schema is `pages(id, domain, url UNIQUE, status, fetched_at)` plus
   `links(source_page_id, target_url)` as a list of link edges between pages.
 
+### HTTP backend
+
+The first step of this is built: [`../backend/`](../backend/README.md) is a FastAPI service that runs many crawls
+at once in one process. It lets clients start crawls, poll their status, page through the pages and links found,
+and cancel them. It depends on this package by path and uses only its public extension points. It wires its own
+fetcher, which shares one connection pool across all crawls, and a writer that records each page on its job,
+instead of relying on the defaults. Jobs live in memory; the queue, shared frontier and database above are still
+future work.
+
 ## Future work
 
 - Per-host request rate limiting and `Crawl-delay`.
