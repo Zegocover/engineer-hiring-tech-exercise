@@ -86,3 +86,18 @@ jobs:
         run: |
           npm run gen:api
           git diff --exit-code src/lib/api
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the stack
+        run: docker compose up --build --wait --wait-timeout 180
+      - name: Smoke test
+        run: bash scripts/docker-smoke.sh
+      - name: Show logs
+        if: failure()
+        run: docker compose logs
+      - name: Stop the stack
+        if: always()
+        run: docker compose down

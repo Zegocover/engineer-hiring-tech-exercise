@@ -15,6 +15,8 @@ It calls the API from its own server, so the API needs no CORS setup.
 
 ## Running it
 
+To run it together with the dashboard in Docker, see [Run everything with Docker](../../README.md#run-everything-with-docker).
+
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The `site-crawler` library is installed from the parent
 `python/` folder (`..`) as an editable path dependency.
 

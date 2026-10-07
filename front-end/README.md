@@ -103,6 +103,9 @@ The dashboard lets you:
 
 ## Running it
 
+The quickest way is Docker: `docker compose up --build` from the repo root starts both services (see
+[Run everything with Docker](../README.md#run-everything-with-docker)). Without Docker:
+
 You need the crawler API and the dashboard running side by side.
 
 ```bash
