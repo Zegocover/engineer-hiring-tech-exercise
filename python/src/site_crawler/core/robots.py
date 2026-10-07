@@ -22,8 +22,9 @@ class RobotsGate:
         self._user_agent = user_agent
 
     @classmethod
-    async def load(cls, fetcher: Fetcher, base_url: str, user_agent: str) -> RobotsGate:
-        robots_url = urljoin(base_url, "/robots.txt")
+    async def load(cls, fetcher: Fetcher, origin: str, user_agent: str) -> RobotsGate:
+        """Fetch and parse ``robots.txt`` for the host at ``origin`` (``scheme://host/``)."""
+        robots_url = urljoin(origin, "/robots.txt")
         try:
             page = await fetcher.fetch(robots_url)
         except FetchError as exc:

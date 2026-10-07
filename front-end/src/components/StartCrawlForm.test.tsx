@@ -111,3 +111,39 @@ describe("rejected requests", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Crawler API is unreachable");
   });
 });
+
+describe("cross-domain options", () => {
+  test("also-follow hosts are sent as a list, without blanks or spaces", async () => {
+    renderWithClient(<StartCrawlForm />);
+    await userEvent.type(screen.getByLabelText("URL"), "https://example.com/");
+    await userEvent.type(
+      screen.getByLabelText("Also follow hosts"),
+      "  *.example.com{enter}{enter} docs.partner.io, ",
+    );
+    await userEvent.type(screen.getByLabelText("Per-host concurrency"), "2");
+    await submit();
+
+    await waitFor(() => expect(fake().started).toHaveLength(1));
+    expect(fake().started[0]).toEqual({
+      url: "https://example.com/",
+      allowed_hosts: ["*.example.com", "docs.partner.io"],
+      per_host_concurrency: 2,
+      respect_robots: true,
+    });
+  });
+
+  test("a rejected host list is shown next to the field", async () => {
+    fake().rejectStart = [
+      { loc: ["body", "allowed_hosts"], msg: "List should have at most 50 items", type: "too_long" },
+    ];
+    renderWithClient(<StartCrawlForm />);
+    await userEvent.type(screen.getByLabelText("URL"), "https://example.com/");
+    await userEvent.type(screen.getByLabelText("Also follow hosts"), "a.example.com");
+    await submit();
+
+    const hosts = screen.getByLabelText("Also follow hosts");
+    await waitFor(() => expect(hosts).toHaveAttribute("aria-invalid", "true"));
+    expect(hosts).toHaveAccessibleDescription("List should have at most 50 items");
+    expect(hosts).toHaveValue("a.example.com");
+  });
+});

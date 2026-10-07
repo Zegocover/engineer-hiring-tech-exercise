@@ -3,11 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from site_crawler.models.errors import ConfigError
+from site_crawler.models.hosts import HostPattern, parse_host_pattern
+
 DEFAULT_USER_AGENT = "site-crawler/0.1 (+https://github.com/)"
-
-
-class ConfigError(ValueError):
-    """Raised when a crawl is configured with invalid values."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +18,13 @@ class CrawlConfig:
     timeout: float = 10.0
     respect_robots: bool = True
     user_agent: str = DEFAULT_USER_AGENT
+    allowed_hosts: tuple[str, ...] = ()
+    """Host patterns followed besides the base host (see :func:`parse_host_pattern`).
+
+    Stored normalised and without duplicates, e.g. ``("*.example.com", "docs.partner.io")``.
+    """
+    per_host_concurrency: int | None = None
+    """Most requests in flight to any one host; ``None`` means no limit beyond ``concurrency``."""
 
     def __post_init__(self) -> None:
         parts = urlsplit(self.base_url)
@@ -32,3 +38,11 @@ class CrawlConfig:
             raise ConfigError("max_depth must not be negative")
         if self.timeout <= 0:
             raise ConfigError("timeout must be positive")
+        if self.per_host_concurrency is not None and self.per_host_concurrency < 1:
+            raise ConfigError("per_host_concurrency must be at least 1")
+        patterns = dict.fromkeys(str(parse_host_pattern(p)) for p in self.allowed_hosts)
+        object.__setattr__(self, "allowed_hosts", tuple(patterns))  # frozen dataclass
+
+    @property
+    def host_patterns(self) -> tuple[HostPattern, ...]:
+        return tuple(parse_host_pattern(p) for p in self.allowed_hosts)

@@ -7,7 +7,10 @@ query parameter order are left alone.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from urllib.parse import urljoin, urlsplit, urlunsplit
+
+from site_crawler.models.hosts import HostPattern
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _HTTP_SCHEMES = frozenset(_DEFAULT_PORTS)
@@ -75,3 +78,38 @@ def host_key(url: str) -> str | None:
 
 def same_host(url: str, host: str) -> bool:
     return host_key(url) == host
+
+
+def host_and_port(url: str) -> tuple[str, int | None] | None:
+    """Lowercase hostname and non-default port of an http(s) URL, or ``None``."""
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    scheme = parts.scheme.lower()
+    if scheme not in _HTTP_SCHEMES or not parts.hostname:
+        return None
+    return parts.hostname.rstrip("."), None if port in (None, _DEFAULT_PORTS[scheme]) else port
+
+
+class HostScope:
+    """The hosts a crawl may fetch from: its base host plus any allowed patterns.
+
+    Matching ignores case, default ports and the scheme, like :func:`same_host`.
+    """
+
+    def __init__(self, base_url: str, patterns: Iterable[HostPattern] = ()) -> None:
+        base = host_and_port(base_url)
+        if base is None:
+            raise ValueError(f"unusable base URL {base_url!r}")
+        self._base = base
+        self._patterns = tuple(patterns)
+
+    def allows(self, url: str) -> bool:
+        target = host_and_port(url)
+        if target is None:
+            return False
+        if target == self._base:
+            return True
+        return any(p.matches(*target) for p in self._patterns)

@@ -11,21 +11,37 @@ const LIMIT_FIELDS = [
   { name: "max_pages", label: "Page budget", hint: "service default" },
   { name: "max_depth", label: "Max depth", hint: "unlimited" },
   { name: "concurrency", label: "Concurrency", hint: "service default" },
+  { name: "per_host_concurrency", label: "Per-host concurrency", hint: "no limit" },
 ] as const;
 
 type LimitName = (typeof LIMIT_FIELDS)[number]["name"];
-type FieldName = "url" | LimitName;
+type FieldName = "url" | LimitName | "allowed_hosts";
 type Values = Record<FieldName, string> & { respect_robots: boolean };
 
-const EMPTY: Values = { url: "", max_pages: "", max_depth: "", concurrency: "", respect_robots: true };
-const FIELD_NAMES = new Set<string>(["url", ...LIMIT_FIELDS.map((f) => f.name)]);
+const EMPTY: Values = {
+  url: "",
+  max_pages: "",
+  max_depth: "",
+  concurrency: "",
+  per_host_concurrency: "",
+  allowed_hosts: "",
+  respect_robots: true,
+};
+const FIELD_NAMES = new Set<string>(["url", "allowed_hosts", ...LIMIT_FIELDS.map((f) => f.name)]);
 
-/** Only the filled-in limits are sent, so the crawler API applies its own defaults. */
+/** "*.example.com\n docs.partner.io," -> ["*.example.com", "docs.partner.io"] */
+export function parseHostList(text: string): string[] {
+  return text.split(/[\s,]+/).filter((host) => host !== "");
+}
+
+/** Only the filled-in settings are sent, so the crawler API applies its own defaults. */
 function toRequest(values: Values): CrawlRequest {
   const body: CrawlRequest = { url: values.url.trim(), respect_robots: values.respect_robots };
   for (const { name } of LIMIT_FIELDS) {
     if (values[name].trim() !== "") body[name] = Number(values[name]);
   }
+  const hosts = parseHostList(values.allowed_hosts);
+  if (hosts.length > 0) body.allowed_hosts = hosts;
   return body;
 }
 
@@ -109,7 +125,7 @@ export function StartCrawlForm() {
         {fieldError("url")}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         {LIMIT_FIELDS.map(({ name, label, hint }) => (
           <div key={name}>
             <label htmlFor={name} className="block text-sm font-medium">
@@ -129,6 +145,28 @@ export function StartCrawlForm() {
             {fieldError(name)}
           </div>
         ))}
+      </div>
+
+      <div>
+        <label htmlFor="allowed_hosts" className="block text-sm font-medium">
+          Also follow hosts
+        </label>
+        <textarea
+          id="allowed_hosts"
+          name="allowed_hosts"
+          rows={2}
+          className={input}
+          placeholder={"*.example.com\ndocs.partner.io"}
+          value={values.allowed_hosts}
+          onChange={set("allowed_hosts")}
+          aria-invalid={Boolean(errors.fields.allowed_hosts)}
+          aria-describedby={errors.fields.allowed_hosts ? "allowed_hosts-error" : "allowed_hosts-hint"}
+        />
+        <p id="allowed_hosts-hint" className="mt-1 text-xs text-zinc-500">
+          One per line or comma-separated. *.example.com covers every subdomain. Links to other
+          hosts are listed but not crawled.
+        </p>
+        {fieldError("allowed_hosts")}
       </div>
 
       <label className="flex items-center gap-2 text-sm">

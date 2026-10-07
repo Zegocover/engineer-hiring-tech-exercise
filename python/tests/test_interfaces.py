@@ -76,3 +76,29 @@ def test_fetch_error_carries_url_and_reason() -> None:
     err = FetchError("https://example.com/", "HTTP 500")
     assert err.url == "https://example.com/"
     assert "HTTP 500" in str(err)
+
+
+def test_allowed_hosts_default_to_none() -> None:
+    config = CrawlConfig("https://example.com")
+    assert config.allowed_hosts == ()
+    assert config.per_host_concurrency is None
+
+
+def test_allowed_hosts_normalised_and_deduplicated() -> None:
+    config = CrawlConfig(
+        "https://example.com",
+        allowed_hosts=("Docs.Partner.IO", "*.example.com", "docs.partner.io", " localhost:8001 "),
+    )
+    assert config.allowed_hosts == ("docs.partner.io", "*.example.com", "localhost:8001")
+    assert [str(p) for p in config.host_patterns] == list(config.allowed_hosts)
+
+
+@pytest.mark.parametrize("pattern", ["https://other.org/", "*", "exa*mple.com", ""])
+def test_invalid_allowed_host_rejected(pattern: str) -> None:
+    with pytest.raises(ConfigError, match="invalid host pattern"):
+        CrawlConfig("https://example.com", allowed_hosts=(pattern,))
+
+
+def test_per_host_concurrency_must_be_positive() -> None:
+    with pytest.raises(ConfigError, match="per_host_concurrency"):
+        CrawlConfig("https://example.com", per_host_concurrency=0)

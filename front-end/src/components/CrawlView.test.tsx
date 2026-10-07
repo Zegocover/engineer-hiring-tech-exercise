@@ -162,3 +162,38 @@ describe("cancelling", () => {
     expect(screen.queryByRole("button", { name: "Cancel crawl" })).not.toBeInTheDocument();
   });
 });
+
+describe("cross-domain limits", () => {
+  const limitsOf = () => screen.getByLabelText("Limits");
+  const limit = (label: string) =>
+    within(limitsOf()).getByText(label, { selector: "dt" }).nextElementSibling as HTMLElement;
+
+  test("the allowed hosts and per-host limit are shown", async () => {
+    const crawl = makeCrawl({
+      limits: {
+        max_pages: 1000,
+        max_depth: null,
+        concurrency: 8,
+        per_host_concurrency: 2,
+        respect_robots: true,
+        allowed_hosts: ["*.example.com", "docs.partner.io"],
+      },
+    });
+    fake().add(crawl);
+    renderWithClient(<CrawlView id={crawl.detail.id} />);
+    await screen.findByRole("heading", { name: crawl.detail.url });
+
+    expect(limit("Also follows")).toHaveTextContent("*.example.com, docs.partner.io");
+    expect(limit("Per-host concurrency")).toHaveTextContent("2");
+  });
+
+  test("a crawl without allowed hosts follows the base host only", async () => {
+    const crawl = makeCrawl();
+    fake().add(crawl);
+    renderWithClient(<CrawlView id={crawl.detail.id} />);
+    await screen.findByRole("heading", { name: crawl.detail.url });
+
+    expect(limit("Also follows")).toHaveTextContent("base host only");
+    expect(limit("Per-host concurrency")).toHaveTextContent("no limit");
+  });
+});

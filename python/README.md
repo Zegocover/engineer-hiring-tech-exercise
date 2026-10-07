@@ -115,6 +115,8 @@ Crawled 20 pages (20 fetched, 0 errors, 0 blocked by robots.txt) in 1.84s
 | `--max-depth N` | unlimited | follow links at most N hops from the base URL |
 | `--timeout S` | 10 | per-request timeout in seconds |
 | `--no-robots` | off | ignore `robots.txt` |
+| `--allow-host PATTERN` | none | also follow links to this host; repeatable. `docs.example.org`, `localhost:8001`, or `*.example.com` for any subdomain (not `example.com` itself) |
+| `--per-host-concurrency N` | no limit | at most N parallel requests to any one host |
 | `--format text\|jsonl` | text | `jsonl` prints one `{"url": ..., "links": [...]}` object per line |
 | `--user-agent S` | `site-crawler/0.1` | User-Agent header |
 | `-v` / `-vv` | warnings | info / debug logging |
@@ -266,6 +268,10 @@ change which resource a server returns. I chose accuracy over a few saved reques
 - **"Not subdomains"** means an exact host match, so `www.example.com` is a *different* host from `example.com`.
   Scheme is ignored, so `http://` and `https://` links on the crawl host are in scope.
 - **robots.txt** is respected by default (except for the base URL, which the user asked for explicitly).
+- **Crossing domains is opt-in.** By default the crawl stays on the base URL's exact host, as the brief asks.
+  `--allow-host` adds hosts to the scope (an exact host, or `*.domain` for any subdomain); links elsewhere are
+  still only reported. Each host's own `robots.txt` is read once, the first time the crawl reaches that host,
+  before any of its URLs are fetched; disallowed URLs never use up the page budget.
   Disallowed URLs are still reported as links on the pages that contain them. `Crawl-delay` is not honoured.
 - When a redirect lands on a page that is already queued, the page is reported once, under its final URL.
 
@@ -312,6 +318,9 @@ future work.
 ## Future work
 
 - Per-host request rate limiting and `Crawl-delay`.
+- A per-host scheduler (one queue per host, round robin). `--per-host-concurrency` uses a semaphore per host,
+  so a worker waiting on a host at its limit doesn't pick up other hosts' work meanwhile; set `--concurrency`
+  to about the per-host limit times the number of busy hosts.
 - Sitemap discovery as extra seeds. Optional `<link rel=canonical>` handling to merge duplicate pages.
 - Running a slow consumer parser off the event loop (`asyncio.to_thread`) if profiling shows parsing blocks the
   workers.

@@ -104,7 +104,14 @@ export function CrawlView({ id }: { id: string }) {
         <Stat label="Page budget" value={limits.max_pages ?? "none"} />
         <Stat label="Max depth" value={limits.max_depth ?? "unlimited"} />
         <Stat label="Concurrency" value={limits.concurrency} />
+        <Stat label="Per-host concurrency" value={limits.per_host_concurrency ?? "no limit"} />
         <Stat label="robots.txt" value={limits.respect_robots ? "respected" : "ignored"} />
+        <div className="col-span-2 sm:col-span-3">
+          <dt className="text-zinc-500">Also follows</dt>
+          <dd className="break-all">
+            {limits.allowed_hosts.length > 0 ? limits.allowed_hosts.join(", ") : "base host only"}
+          </dd>
+        </div>
       </dl>
 
       <ResultsTabs id={id} running={running} />

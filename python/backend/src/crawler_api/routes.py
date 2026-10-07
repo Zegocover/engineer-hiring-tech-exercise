@@ -49,7 +49,9 @@ async def start_crawl(body: CrawlRequest, service: Service, response: Response) 
         max_pages=body.max_pages,
         max_depth=body.max_depth,
         concurrency=body.concurrency,
+        per_host_concurrency=body.per_host_concurrency,
         respect_robots=body.respect_robots,
+        allowed_hosts=body.allowed_hosts,
     )
     response.headers["Location"] = f"/crawls/{job.id}"
     return CrawlSummary.of(job)

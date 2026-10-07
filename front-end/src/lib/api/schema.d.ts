@@ -166,10 +166,20 @@ export interface components {
              */
             concurrency?: number | null;
             /**
+             * Per Host Concurrency
+             * @description Most parallel requests to any one host. Default: no limit.
+             */
+            per_host_concurrency?: number | null;
+            /**
              * Respect Robots
              * @default true
              */
             respect_robots: boolean;
+            /**
+             * Allowed Hosts
+             * @description Extra hosts to follow besides the base URL's: 'docs.example.org', 'localhost:8001', or '*.example.com' for any subdomain.
+             */
+            allowed_hosts?: string[];
         };
         /**
          * CrawlStatus
@@ -224,8 +234,12 @@ export interface components {
             max_depth: number | null;
             /** Concurrency */
             concurrency: number;
+            /** Per Host Concurrency */
+            per_host_concurrency: number | null;
             /** Respect Robots */
             respect_robots: boolean;
+            /** Allowed Hosts */
+            allowed_hosts: string[];
         };
         /**
          * LinkList

@@ -86,6 +86,8 @@ The request body accepts these fields; everything except `url` is optional:
 | `max_depth` | How many link hops from the base URL to follow. |
 | `concurrency` | Parallel requests for this crawl. |
 | `respect_robots` | Whether to obey robots.txt. Defaults to `true`. |
+| `allowed_hosts` | Extra hosts to follow besides the base URL's, up to 50: `docs.example.org`, `localhost:8001`, or `*.example.com` for any subdomain (not `example.com` itself). Links to other hosts are still only reported. Defaults to none. |
+| `per_host_concurrency` | Most parallel requests to any one host, at most the service's maximum concurrency. Defaults to no extra limit. |
 
 ## Settings
 

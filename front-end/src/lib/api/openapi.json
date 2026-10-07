@@ -464,10 +464,32 @@
             "title": "Concurrency",
             "description": "Parallel requests."
           },
+          "per_host_concurrency": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Host Concurrency",
+            "description": "Most parallel requests to any one host. Default: no limit."
+          },
           "respect_robots": {
             "type": "boolean",
             "title": "Respect Robots",
             "default": true
+          },
+          "allowed_hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Allowed Hosts",
+            "description": "Extra hosts to follow besides the base URL's: 'docs.example.org', 'localhost:8001', or '*.example.com' for any subdomain."
           }
         },
         "type": "object",
@@ -625,9 +647,27 @@
             "type": "integer",
             "title": "Concurrency"
           },
+          "per_host_concurrency": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Host Concurrency"
+          },
           "respect_robots": {
             "type": "boolean",
             "title": "Respect Robots"
+          },
+          "allowed_hosts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Hosts"
           }
         },
         "type": "object",
@@ -635,7 +675,9 @@
           "max_pages",
           "max_depth",
           "concurrency",
-          "respect_robots"
+          "per_host_concurrency",
+          "respect_robots",
+          "allowed_hosts"
         ],
         "title": "Limits"
       },

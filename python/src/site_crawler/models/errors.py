@@ -1,3 +1,7 @@
+class ConfigError(ValueError):
+    """Raised when a crawl is configured with invalid values."""
+
+
 class FetchError(Exception):
     """Raised by a fetcher when a URL cannot be retrieved.
 

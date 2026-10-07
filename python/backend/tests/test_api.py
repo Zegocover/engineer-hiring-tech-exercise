@@ -3,6 +3,7 @@
 import asyncio
 
 import httpx
+import pytest
 
 from crawler_api.settings import Settings
 from tests.conftest import ApiOpener
@@ -103,7 +104,9 @@ async def test_details_include_effective_limits(api: ApiOpener) -> None:
         "max_pages": 50,
         "max_depth": 2,
         "concurrency": 6,
+        "per_host_concurrency": None,
         "respect_robots": True,
+        "allowed_hosts": [],
     }
     assert "error" in detail
 
@@ -328,3 +331,74 @@ async def test_unexpected_error_fails_only_that_crawl(api: ApiOpener) -> None:
         assert (await finish(client, bad))["status"] == "failed"
         assert (await finish(client, good))["status"] == "completed"
         assert (await client.get("/health")).status_code == 200
+
+
+# --- Cross-domain crawls (allowed_hosts) ---
+
+PARTNER = "https://docs.partner.io/"
+
+
+def partner_site() -> FakeSite:
+    return FakeSite(
+        {
+            BASE: [f"{PARTNER}guide", "https://other.org/"],
+            f"{PARTNER}guide": [],
+            "https://other.org/": [],
+        }
+    )
+
+
+async def test_start_a_cross_domain_crawl(api: ApiOpener) -> None:
+    async with api(partner_site()) as client:
+        job_id = await start(
+            client, allowed_hosts=["*.example.com", "docs.partner.io"], per_host_concurrency=2
+        )
+        status = await finish(client, job_id)
+        detail = (await client.get(f"/crawls/{job_id}")).json()
+    assert status["status"] == "completed"
+    assert detail["limits"]["allowed_hosts"] == ["*.example.com", "docs.partner.io"]
+    assert detail["limits"]["per_host_concurrency"] == 2
+
+
+async def test_allowed_host_pages_appear_in_results(api: ApiOpener) -> None:
+    site = partner_site()
+    async with api(site) as client:
+        job_id = await start(client, allowed_hosts=["docs.partner.io"])
+        await finish(client, job_id)
+        urls = [p["url"] for p in (await client.get(f"/crawls/{job_id}/pages")).json()["items"]]
+    assert f"{PARTNER}guide" in urls
+    assert "https://other.org/" not in urls
+    assert "https://other.org/" not in site.calls
+
+
+async def test_allowed_hosts_are_reported_normalised(api: ApiOpener) -> None:
+    async with api(partner_site()) as client:
+        job_id = await start(client, allowed_hosts=["*.Example.COM", " docs.partner.io "])
+        limits = (await client.get(f"/crawls/{job_id}")).json()["limits"]
+        await finish(client, job_id)
+    assert limits["allowed_hosts"] == ["*.example.com", "docs.partner.io"]
+
+
+@pytest.mark.parametrize("pattern", ["https://example.com/path", "exa*mple.com", "*"])
+async def test_invalid_allowed_host_rejected(api: ApiOpener, pattern: str) -> None:
+    async with api(partner_site()) as client:
+        response = await client.post("/crawls", json={"url": BASE, "allowed_hosts": [pattern]})
+        assert response.status_code == 422
+        assert repr(pattern) in response.json()["detail"][0]["msg"]
+        assert (await client.get("/crawls")).json() == []
+
+
+async def test_too_many_allowed_hosts_rejected(api: ApiOpener) -> None:
+    hosts = [f"h{n}.example.com" for n in range(51)]
+    async with api(partner_site()) as client:
+        response = await client.post("/crawls", json={"url": BASE, "allowed_hosts": hosts})
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["loc"] == ["body", "allowed_hosts"]
+        assert (await client.get("/crawls")).json() == []
+
+
+async def test_per_host_concurrency_above_maximum_rejected(api: ApiOpener) -> None:
+    async with api(partner_site(), Settings(max_concurrency=4)) as client:
+        response = await client.post("/crawls", json={"url": BASE, "per_host_concurrency": 5})
+        assert response.status_code == 422
+        assert "per_host_concurrency must be at most 4" in response.json()["detail"][0]["msg"]

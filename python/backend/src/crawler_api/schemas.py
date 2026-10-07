@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from crawler_api.jobs import CrawlJob, JobStatus
 
+MAX_ALLOWED_HOSTS = 50
+
 
 class CrawlRequest(BaseModel):
     url: str = Field(description="Absolute http(s) base URL; its host is the crawl scope.")
@@ -16,7 +18,16 @@ class CrawlRequest(BaseModel):
     )
     max_depth: int | None = Field(default=None, ge=0, description="Link hops from the base URL.")
     concurrency: int | None = Field(default=None, ge=1, description="Parallel requests.")
+    per_host_concurrency: int | None = Field(
+        default=None, ge=1, description="Most parallel requests to any one host. Default: no limit."
+    )
     respect_robots: bool = True
+    allowed_hosts: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_ALLOWED_HOSTS,
+        description="Extra hosts to follow besides the base URL's: 'docs.example.org', "
+        "'localhost:8001', or '*.example.com' for any subdomain.",
+    )
 
 
 class Stats(BaseModel):
@@ -30,7 +41,9 @@ class Limits(BaseModel):
     max_pages: int | None
     max_depth: int | None
     concurrency: int
+    per_host_concurrency: int | None
     respect_robots: bool
+    allowed_hosts: list[str]
 
 
 class CrawlStatus(BaseModel):
@@ -88,7 +101,9 @@ class CrawlDetail(CrawlSummary):
                 max_pages=config.max_pages,
                 max_depth=config.max_depth,
                 concurrency=config.concurrency,
+                per_host_concurrency=config.per_host_concurrency,
                 respect_robots=config.respect_robots,
+                allowed_hosts=list(config.allowed_hosts),
             ),
             error=job.error,
         )

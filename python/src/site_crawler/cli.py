@@ -52,6 +52,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--no-robots", action="store_true", help="ignore robots.txt")
     parser.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="also follow links to this host: docs.example.org, localhost:8001 or *.example.com "
+        "(any subdomain); repeatable",
+    )
+    parser.add_argument(
+        "--per-host-concurrency",
+        type=_positive_int,
+        metavar="N",
+        help="at most N parallel requests to any one host (default: no extra limit)",
+    )
+    parser.add_argument(
         "--format", choices=("text", "jsonl"), default="text", help="output format (text)"
     )
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT, help="User-Agent header")
@@ -81,6 +95,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             timeout=args.timeout,
             respect_robots=not args.no_robots,
             user_agent=args.user_agent,
+            allowed_hosts=tuple(args.allow_host),
+            per_host_concurrency=args.per_host_concurrency,
         )
     except ConfigError as exc:
         print(f"crawl: error: {exc}", file=sys.stderr)

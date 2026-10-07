@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from site_crawler import Crawler, DefaultSelectolaxParser
 from site_crawler.interfaces import Fetcher
@@ -56,7 +56,9 @@ class CrawlService:
         max_pages: int | None = None,
         max_depth: int | None = None,
         concurrency: int | None = None,
+        per_host_concurrency: int | None = None,
         respect_robots: bool = True,
+        allowed_hosts: Sequence[str] = (),
     ) -> CrawlJob:
         """Validate the request, then start the crawl in the background.
 
@@ -72,6 +74,8 @@ class CrawlService:
             concurrency = settings.default_concurrency
         elif concurrency > settings.max_concurrency:
             raise LimitError(f"concurrency must be at most {settings.max_concurrency}")
+        if per_host_concurrency is not None and per_host_concurrency > settings.max_concurrency:
+            raise LimitError(f"per_host_concurrency must be at most {settings.max_concurrency}")
 
         config = CrawlConfig(
             base_url=url,
@@ -81,6 +85,8 @@ class CrawlService:
             timeout=settings.request_timeout,
             respect_robots=respect_robots,
             user_agent=settings.user_agent,
+            allowed_hosts=tuple(allowed_hosts),
+            per_host_concurrency=per_host_concurrency,
         )
         job = CrawlJob(id=uuid.uuid4().hex, config=config)
         crawler = Crawler(

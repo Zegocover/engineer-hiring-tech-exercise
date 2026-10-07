@@ -53,6 +53,18 @@ async def test_defaults_applied() -> None:
     await finished(job)
 
 
+async def test_cross_domain_options_reach_the_crawl() -> None:
+    pages = {BASE: ["https://docs.partner.io/guide"], "https://docs.partner.io/guide": []}
+    site = FakeSite(pages)
+    service = make_service(site)
+    job = await finished(
+        service.start(BASE, allowed_hosts=["Docs.Partner.io"], per_host_concurrency=2)
+    )
+    assert job.config.allowed_hosts == ("docs.partner.io",)
+    assert job.config.per_host_concurrency == 2
+    assert "https://docs.partner.io/guide" in site.calls
+
+
 async def test_seed_failure_fails_crawl() -> None:
     service = make_service(three_page_site(failing={BASE}))
     job = await finished(service.start(BASE))
