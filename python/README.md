@@ -150,8 +150,8 @@ class MyWriter:  # no base class needed
 stats = await Crawler(CrawlConfig("https://example.com/", max_pages=100), writer=MyWriter()).run()
 ```
 
-Any of `fetcher=`, `parser=` and `writer=` can be passed. Whatever is left out uses the default (`HttpxFetcher`,
-`SelectolaxParser`, `TextWriter`). The defaults and `JsonLinesWriter` can also be imported from `site_crawler`, so
+Any of `fetcher=`, `parser=` and `writer=` can be passed. Whatever is left out uses the default (`DefaultHttpxFetcher`,
+`DefaultSelectolaxParser`, `TextWriter`). The defaults and `JsonLinesWriter` can also be imported from `site_crawler`, so
 they can be combined with a custom component. [`examples/custom_writer.py`](examples/custom_writer.py) builds a link graph
 and reports the most-linked URLs:
 
@@ -194,9 +194,9 @@ src/site_crawler/
     parser.py              Parser
     writer.py              Writer
   fetchers/                default implementations, grouped by role
-    httpx_fetcher.py       HttpxFetcher
+    httpx_fetcher.py       DefaultHttpxFetcher
   parsers/
-    selectolax_parser.py   SelectolaxParser
+    selectolax_parser.py   DefaultSelectolaxParser
   writers/
     text.py                TextWriter
     jsonl.py               JsonLinesWriter

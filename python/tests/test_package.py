@@ -23,8 +23,8 @@ PUBLIC_API = {
     "Parser",
     "Writer",
     # default implementations
-    "HttpxFetcher",
-    "SelectolaxParser",
+    "DefaultHttpxFetcher",
+    "DefaultSelectolaxParser",
     "TextWriter",
     "JsonLinesWriter",
 }

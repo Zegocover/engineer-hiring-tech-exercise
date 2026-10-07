@@ -5,7 +5,7 @@ from __future__ import annotations
 import respx
 
 from site_crawler import CrawlConfig, Crawler
-from site_crawler.fetchers import HttpxFetcher
+from site_crawler.fetchers import DefaultHttpxFetcher
 from tests.fakes import CollectingWriter
 
 S = "https://example.com"
@@ -62,7 +62,7 @@ async def _run_full_crawl(router: respx.MockRouter) -> None:
 
     stats = await Crawler(
         CrawlConfig(f"{S}/", concurrency=4),
-        fetcher=HttpxFetcher(backoff=0),
+        fetcher=DefaultHttpxFetcher(backoff=0),
         writer=writer,
     ).run()
 

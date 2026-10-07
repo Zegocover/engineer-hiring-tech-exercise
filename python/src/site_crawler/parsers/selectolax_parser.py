@@ -7,7 +7,7 @@ from selectolax.lexbor import LexborHTMLParser
 from site_crawler.models import FetchResult
 
 
-class SelectolaxParser:
+class DefaultSelectolaxParser:
     """Default parser: ``<a href>`` links in document order.
 
     Uses selectolax's Lexbor backend, a fast HTML5-compliant parser that

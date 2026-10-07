@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from site_crawler.fetchers import HttpxFetcher
+from site_crawler.fetchers import DefaultHttpxFetcher
 from site_crawler.models import FetchError
 
 URL = "https://example.com/"
@@ -14,14 +14,14 @@ HTML = {"content-type": "text/html; charset=utf-8"}
 
 
 @pytest.fixture
-async def fetcher() -> AsyncIterator[HttpxFetcher]:
-    f = HttpxFetcher(backoff=0, max_retries=2)
+async def fetcher() -> AsyncIterator[DefaultHttpxFetcher]:
+    f = DefaultHttpxFetcher(backoff=0, max_retries=2)
     yield f
     await f.aclose()
 
 
 @respx.mock
-async def test_success(fetcher: HttpxFetcher) -> None:
+async def test_success(fetcher: DefaultHttpxFetcher) -> None:
     respx.get(URL).respond(200, headers=HTML, text="<a href='/x'>x</a>")
     result = await fetcher.fetch(URL)
     assert result.status == 200
@@ -31,7 +31,7 @@ async def test_success(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_redirect_sets_final_url(fetcher: HttpxFetcher) -> None:
+async def test_redirect_sets_final_url(fetcher: DefaultHttpxFetcher) -> None:
     respx.get("https://example.com/old").respond(301, headers={"location": "/new/"})
     respx.get("https://example.com/new/").respond(200, headers=HTML, text="")
     result = await fetcher.fetch("https://example.com/old")
@@ -40,7 +40,7 @@ async def test_redirect_sets_final_url(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_transient_503_then_200_recovers(fetcher: HttpxFetcher) -> None:
+async def test_transient_503_then_200_recovers(fetcher: DefaultHttpxFetcher) -> None:
     route = respx.get(URL)
     route.side_effect = [httpx.Response(503), httpx.Response(200, headers=HTML, text="ok")]
     result = await fetcher.fetch(URL)
@@ -49,7 +49,7 @@ async def test_transient_503_then_200_recovers(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_retry_after_honoured(fetcher: HttpxFetcher) -> None:
+async def test_retry_after_honoured(fetcher: DefaultHttpxFetcher) -> None:
     route = respx.get(URL)
     route.side_effect = [
         httpx.Response(429, headers={"retry-after": "0"}),
@@ -59,7 +59,7 @@ async def test_retry_after_honoured(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_persistent_500_raises_fetch_error(fetcher: HttpxFetcher) -> None:
+async def test_persistent_500_raises_fetch_error(fetcher: DefaultHttpxFetcher) -> None:
     route = respx.get(URL).respond(500)
     with pytest.raises(FetchError, match="HTTP 500"):
         await fetcher.fetch(URL)
@@ -67,7 +67,7 @@ async def test_persistent_500_raises_fetch_error(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_404_not_retried(fetcher: HttpxFetcher) -> None:
+async def test_404_not_retried(fetcher: DefaultHttpxFetcher) -> None:
     route = respx.get(URL).respond(404)
     with pytest.raises(FetchError, match="HTTP 404"):
         await fetcher.fetch(URL)
@@ -75,7 +75,7 @@ async def test_404_not_retried(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_timeout_retried_then_raises(fetcher: HttpxFetcher) -> None:
+async def test_timeout_retried_then_raises(fetcher: DefaultHttpxFetcher) -> None:
     route = respx.get(URL).mock(side_effect=httpx.ConnectTimeout("slow"))
     with pytest.raises(FetchError, match="ConnectTimeout"):
         await fetcher.fetch(URL)
@@ -83,7 +83,7 @@ async def test_timeout_retried_then_raises(fetcher: HttpxFetcher) -> None:
 
 
 @respx.mock
-async def test_non_html_body_not_downloaded(fetcher: HttpxFetcher) -> None:
+async def test_non_html_body_not_downloaded(fetcher: DefaultHttpxFetcher) -> None:
     respx.get(URL).respond(200, headers={"content-type": "application/pdf"}, content=b"%PDF")
     result = await fetcher.fetch(URL)
     assert not result.is_html
@@ -92,7 +92,7 @@ async def test_non_html_body_not_downloaded(fetcher: HttpxFetcher) -> None:
 
 @respx.mock
 async def test_body_capped() -> None:
-    fetcher = HttpxFetcher(max_body_bytes=10)
+    fetcher = DefaultHttpxFetcher(max_body_bytes=10)
     respx.get(URL).respond(200, headers=HTML, content=b"x" * 100)
     try:
         assert len((await fetcher.fetch(URL)).body) == 10
@@ -101,7 +101,7 @@ async def test_body_capped() -> None:
 
 
 @respx.mock
-async def test_text_plain_body_downloaded(fetcher: HttpxFetcher) -> None:
+async def test_text_plain_body_downloaded(fetcher: DefaultHttpxFetcher) -> None:
     respx.get("https://example.com/robots.txt").respond(
         200, headers={"content-type": "text/plain"}, text="User-agent: *\nDisallow: /x/\n"
     )

@@ -14,7 +14,7 @@ RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 _TEXT_TYPES = ("application/xhtml+xml", "application/xml", "application/json")
 
 
-class HttpxFetcher:
+class DefaultHttpxFetcher:
     """Default fetcher: one pooled ``httpx.AsyncClient`` shared by all workers.
 
     Transient failures (timeouts, connection errors, 429 and 5xx) are retried

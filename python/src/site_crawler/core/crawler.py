@@ -15,10 +15,10 @@ import logging
 
 from site_crawler.core.robots import RobotsGate
 from site_crawler.core.urls import host_key, normalise, resolve_and_normalise, same_host
-from site_crawler.fetchers import HttpxFetcher
+from site_crawler.fetchers import DefaultHttpxFetcher
 from site_crawler.interfaces import Fetcher, Parser, Writer
 from site_crawler.models import CrawlConfig, CrawlStats, FetchError, FetchResult, PageResult
-from site_crawler.parsers import SelectolaxParser
+from site_crawler.parsers import DefaultSelectolaxParser
 from site_crawler.writers import TextWriter
 
 logger = logging.getLogger(__name__)
@@ -34,15 +34,15 @@ class Crawler:
         writer: Writer | None = None,
     ) -> None:
         """Create a crawl. Components left as ``None`` use the package defaults:
-        :class:`HttpxFetcher`, :class:`SelectolaxParser` and :class:`TextWriter`.
+        :class:`DefaultHttpxFetcher`, :class:`DefaultSelectolaxParser` and :class:`TextWriter`.
         """
         self._config = config
-        self._fetcher = fetcher or HttpxFetcher(
+        self._fetcher = fetcher or DefaultHttpxFetcher(
             timeout=config.timeout,
             max_connections=config.concurrency,
             user_agent=config.user_agent,
         )
-        self._parser = parser or SelectolaxParser()
+        self._parser = parser or DefaultSelectolaxParser()
         self._writer = writer or TextWriter()
 
         seed = normalise(config.base_url)

@@ -9,7 +9,7 @@ Package layout (each layer only imports the ones before it):
 """
 
 from site_crawler.core import Crawler
-from site_crawler.fetchers import HttpxFetcher
+from site_crawler.fetchers import DefaultHttpxFetcher
 from site_crawler.interfaces import Fetcher, Parser, Writer
 from site_crawler.models import (
     ConfigError,
@@ -19,7 +19,7 @@ from site_crawler.models import (
     FetchResult,
     PageResult,
 )
-from site_crawler.parsers import SelectolaxParser
+from site_crawler.parsers import DefaultSelectolaxParser
 from site_crawler.writers import JsonLinesWriter, TextWriter
 
 __all__ = [
@@ -27,14 +27,14 @@ __all__ = [
     "CrawlConfig",
     "CrawlStats",
     "Crawler",
+    "DefaultHttpxFetcher",
+    "DefaultSelectolaxParser",
     "FetchError",
     "FetchResult",
     "Fetcher",
-    "HttpxFetcher",
     "JsonLinesWriter",
     "PageResult",
     "Parser",
-    "SelectolaxParser",
     "TextWriter",
     "Writer",
 ]

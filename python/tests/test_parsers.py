@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from site_crawler.models import FetchResult
-from site_crawler.parsers import SelectolaxParser
+from site_crawler.parsers import DefaultSelectolaxParser
 
 URL = "https://example.com/dir/page"
 
 
 def parse(html: str, url: str = URL) -> list[str]:
-    return SelectolaxParser().parse(FetchResult(url, url, 200, "text/html", html.encode()))
+    return DefaultSelectolaxParser().parse(FetchResult(url, url, 200, "text/html", html.encode()))
 
 
 def test_anchors_in_document_order() -> None:
@@ -48,5 +48,5 @@ def test_absolute_base_href() -> None:
 
 def test_non_utf8_bytes_do_not_crash() -> None:
     body = b'<a href="/caf\xe9">x</a>'
-    result = SelectolaxParser().parse(FetchResult(URL, URL, 200, "text/html", body))
+    result = DefaultSelectolaxParser().parse(FetchResult(URL, URL, 200, "text/html", body))
     assert len(result) == 1
