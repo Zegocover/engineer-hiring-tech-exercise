@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-site-crawler = { path = "../python", editable = true }
+site-crawler = { path = "..", editable = true }
 
 [dependency-groups]
 dev = [

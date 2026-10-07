@@ -1,6 +1,6 @@
 # crawler-api
 
-An HTTP service for running [`site-crawler`](../python/README.md) crawls. You start a crawl with one request and it
+An HTTP service for running [`site-crawler`](../README.md) crawls. You start a crawl with one request and it
 runs in the background. You can then poll its status, page through the pages and links it finds, or cancel it, and
 several crawls can run at once in one process.
 
@@ -12,11 +12,11 @@ Each crawl follows the same rules as the `crawl` command:
 
 ## Running it
 
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The `site-crawler` library is installed from `../python`
-as an editable path dependency.
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). The `site-crawler` library is installed from the parent
+`python/` folder (`..`) as an editable path dependency.
 
 ```bash
-cd backend
+cd python/backend
 uv sync
 uv run uvicorn crawler_api.main:app            # http://127.0.0.1:8000, docs at /docs
 ```

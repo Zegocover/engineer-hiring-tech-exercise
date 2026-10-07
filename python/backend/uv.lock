@@ -152,7 +152,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "site-crawler", editable = "../python" },
+    { name = "site-crawler", editable = "../" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
 
@@ -670,7 +670,7 @@ wheels = [
 [[package]]
 name = "site-crawler"
 version = "0.1.0"
-source = { editable = "../python" }
+source = { editable = "../" }
 dependencies = [
     { name = "httpx" },
     { name = "selectolax" },

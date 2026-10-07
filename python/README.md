@@ -302,7 +302,7 @@ into a service:
 
 ### HTTP backend
 
-The first step of this is built: [`../backend/`](../backend/README.md) is a FastAPI service that runs many crawls
+The first step of this is built: [`backend/`](backend/README.md) is a FastAPI service that runs many crawls
 at once in one process. It lets clients start crawls, poll their status, page through the pages and links found,
 and cancel them. It depends on this package by path and uses only its public extension points. It wires its own
 fetcher, which shares one connection pool across all crawls, and a writer that records each page on its job,
