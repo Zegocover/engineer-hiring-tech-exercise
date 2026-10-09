@@ -1,0 +1,46 @@
+[project]
+name = "web-crawler"
+version = "1.0.0"
+description = "An async web crawler that maps site structure by discovering and reporting page links"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.9,<3.11",
+    "beautifulsoup4>=4.12,<5",
+    "lxml>=5.0,<6",
+]
+
+[project.scripts]
+crawl = "crawler.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "pytest-asyncio>=0.23",
+    "aioresponses>=0.7",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
