@@ -1,6 +1,11 @@
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     application
+    checkstyle
     alias(libs.plugins.shadow)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.errorprone)
 }
 
 group = "com.hamzaali"
@@ -17,6 +22,8 @@ java {
 }
 
 dependencies {
+    errorprone(libs.errorprone.core)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
@@ -30,6 +37,20 @@ application {
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+    options.errorprone.disableWarningsInGeneratedCode = true
+}
+
+spotless {
+    java {
+        palantirJavaFormat(libs.versions.palantir.java.format.get())
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+checkstyle {
+    toolVersion = libs.versions.checkstyle.get()
+    maxWarnings = 0
 }
 
 tasks.test {
