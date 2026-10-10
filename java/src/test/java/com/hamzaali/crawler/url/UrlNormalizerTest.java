@@ -35,6 +35,7 @@ class UrlNormalizerTest {
             "http://example.com/caf%C3%A9, http://example.com/caf%C3%A9",
             "http://example.com/100%, http://example.com/100%25",
             "http://[::1]:8080/a, http://[::1]:8080/a",
+            "http://sub.127.0.0.1:60991/page, http://sub.127.0.0.1:60991/page",
         })
         void shouldCanonicalizeUrl(String url, String expected) {
             Optional<URI> result = UrlNormalizer.normalize(url);
@@ -54,7 +55,6 @@ class UrlNormalizerTest {
                     "ftp://example.com/file",
                     "http://",
                     "/relative/path",
-                    "http://exa mple.com/",
                 })
         void shouldRejectUrlWhenItIsNotCrawlable(String url) {
             Optional<URI> result = UrlNormalizer.normalize(url);

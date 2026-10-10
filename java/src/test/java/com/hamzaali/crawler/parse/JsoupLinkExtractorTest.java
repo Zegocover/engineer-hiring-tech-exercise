@@ -20,6 +20,7 @@ class JsoupLinkExtractorTest {
                 <a href="https://example.com/contact">Absolute</a>
                 <a href="https://other.example/news">External</a>
                 <a href="https://sub.example.com/help">Subdomain</a>
+                <a href="http://sub.127.0.0.1:60991/page">Literal subdomain</a>
                 """;
 
         Set<URI> links = extractor.extractLinks(PAGE, html);
@@ -30,7 +31,8 @@ class JsoupLinkExtractorTest {
                         URI.create("https://example.com/catalog/item"),
                         URI.create("https://example.com/contact"),
                         URI.create("https://other.example/news"),
-                        URI.create("https://sub.example.com/help"));
+                        URI.create("https://sub.example.com/help"),
+                        URI.create("http://sub.127.0.0.1:60991/page"));
     }
 
     @Test

@@ -31,6 +31,7 @@ class SameHostScopeTest {
                 "https://www.example.com/",
                 "https://example.com.attacker.test/",
                 "https://another-example.com/",
+                "http://sub.127.0.0.1:60991/page",
                 "ftp://example.com/file",
                 "/relative/path",
             })

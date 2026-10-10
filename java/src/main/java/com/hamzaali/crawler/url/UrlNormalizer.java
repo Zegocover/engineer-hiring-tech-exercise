@@ -86,7 +86,7 @@ public final class UrlNormalizer {
 
     private static Optional<URI> canonicalizeHierarchicalUri(URI uri) {
         return crawlableScheme(uri)
-                .flatMap(scheme -> canonicalHost(uri).map(host -> buildCanonicalUri(uri, scheme, host)));
+                .flatMap(scheme -> hostAndPort(uri).map(authority -> buildCanonicalUri(uri, scheme, authority)));
     }
 
     private static Optional<String> crawlableScheme(URI uri) {
@@ -95,25 +95,70 @@ public final class UrlNormalizer {
                 .filter(CRAWLABLE_SCHEMES::contains);
     }
 
-    private static Optional<String> canonicalHost(URI uri) {
-        return Optional.ofNullable(uri.getHost()).map(host -> host.toLowerCase(Locale.ROOT));
+    /**
+     * java.net.URI leaves getHost() empty for names such as {@code sub.127.0.0.1}, because the last labels look like
+     * a broken IPv4 address. Browsers still treat that as a hostname, so we fall back to the raw authority.
+     */
+    private static Optional<HostAndPort> hostAndPort(URI uri) {
+        return Optional.ofNullable(uri.getHost())
+                .map(host -> new HostAndPort(host.toLowerCase(Locale.ROOT), uri.getPort()))
+                .or(() -> hostAndPortFromAuthority(uri.getRawAuthority()));
     }
 
-    private static URI buildCanonicalUri(URI uri, String scheme, String host) {
+    private static Optional<HostAndPort> hostAndPortFromAuthority(String authority) {
+        return Optional.ofNullable(authority)
+                .map(UrlNormalizer::stripUserInfo)
+                .flatMap(UrlNormalizer::splitHostAndPort)
+                .filter(value -> !value.host().isEmpty());
+    }
+
+    private static String stripUserInfo(String authority) {
+        int userInfoEnd = authority.lastIndexOf('@');
+        return userInfoEnd >= 0 ? authority.substring(userInfoEnd + 1) : authority;
+    }
+
+    private static Optional<HostAndPort> splitHostAndPort(String hostPort) {
+        if (hostPort.startsWith("[")) {
+            int close = hostPort.indexOf(']');
+            if (close < 0) {
+                return Optional.empty();
+            }
+            String host = hostPort.substring(0, close + 1).toLowerCase(Locale.ROOT);
+            return Optional.of(new HostAndPort(host, portAfter(hostPort, close + 1)));
+        }
+        int colon = hostPort.lastIndexOf(':');
+        if (colon < 0) {
+            return Optional.of(new HostAndPort(hostPort.toLowerCase(Locale.ROOT), -1));
+        }
+        return Optional.of(
+                new HostAndPort(hostPort.substring(0, colon).toLowerCase(Locale.ROOT), portAfter(hostPort, colon)));
+    }
+
+    private static int portAfter(String hostPort, int separatorIndex) {
+        if (separatorIndex + 1 >= hostPort.length() || hostPort.charAt(separatorIndex) != ':') {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(hostPort.substring(separatorIndex + 1));
+        } catch (NumberFormatException malformedPort) {
+            return -1;
+        }
+    }
+
+    private static URI buildCanonicalUri(URI uri, String scheme, HostAndPort authority) {
         // Built from raw components because URI's multi-argument constructors decode and re-encode,
         // which would turn escapes such as %2F into real path separators.
         String canonical = scheme
                 + "://"
-                + canonicalAuthority(uri, scheme, host)
+                + canonicalAuthority(scheme, authority)
                 + canonicalPath(uri.getRawPath())
                 + querySuffix(uri);
         return URI.create(canonical);
     }
 
     /** User info is dropped so that credentials embedded in links are never printed or sent to a server. */
-    private static String canonicalAuthority(URI uri, String scheme, String host) {
-        int port = uri.getPort();
-        return isDefaultPort(scheme, port) ? host : host + ":" + port;
+    private static String canonicalAuthority(String scheme, HostAndPort authority) {
+        return isDefaultPort(scheme, authority.port()) ? authority.host() : authority.host() + ":" + authority.port();
     }
 
     private static boolean isDefaultPort(String scheme, int port) {
@@ -179,4 +224,6 @@ public final class UrlNormalizer {
             target.append('%').append(UPPERCASE_HEX.toHexDigits(utf8Byte));
         }
     }
+
+    private record HostAndPort(String host, int port) {}
 }
