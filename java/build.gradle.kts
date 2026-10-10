@@ -24,6 +24,8 @@ java {
 dependencies {
     errorprone(libs.errorprone.core)
 
+    implementation(libs.jsoup)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
