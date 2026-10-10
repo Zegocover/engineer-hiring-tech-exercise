@@ -25,6 +25,7 @@ dependencies {
     errorprone(libs.errorprone.core)
 
     implementation(libs.jsoup)
+    implementation(libs.picocli)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
