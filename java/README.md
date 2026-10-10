@@ -4,47 +4,90 @@ Java 21 command-line crawler for the Zego engineering exercise.
 
 It accepts a starting URL, visits pages on that exact host, and prints each page URL together with every HTTP link found on it. Other hosts and subdomains are printed when they appear as links, but they are never fetched.
 
-```bash
-./gradlew shadowJar
-java -jar build/libs/crawler.jar https://example.com
-./run_crawler.sh example.com -c 20 -t 15
-```
-
 If the URL has no scheme, `https://` is added.
 
-## Development environment and tools
+## Run it anywhere
 
-- **Language:** Java 21, chosen because it is an officially supported language for the exercise and because virtual threads keep concurrent I/O simple.
-- **IDE:** IntelliJ IDEA Community Edition. Gradle import, JUnit run configurations, and the debugger were used while reading each commit.
-- **Build:** Gradle 9.8.1 with the Gradle Wrapper, Shadow (fat jar), Spotless + palantir-java-format, Checkstyle, and Error Prone. Compiler warnings are errors.
-- **Libraries:** `java.net.http.HttpClient` for HTTP, Jsoup for HTML parsing only, picocli for the CLI. No crawler framework.
-- **Tests:** JUnit 5 and AssertJ. HTTP tests use the JDK `HttpServer`. Crawler tests use an in-memory fake fetcher. No test hits the public internet.
-- **AI workflow:** Cursor was used as a pair-programming assistant. Each unit was designed first, implemented as a small commit, explained, and only then committed. I did not copy another candidate’s solution. The Zego evaluation harness (PR #26, not merged) was used as an acceptance check, not as the design.
+There are three ways to run the same crawler. Pick the one that matches the machine.
 
-## How to run
+### 1. Docker — no Java or Gradle install
+
+Use this on another laptop, a server, or CI when you do not want to install a JDK.
+
+```bash
+cd java
+docker build -t zego-crawler .
+docker run --rm zego-crawler --help
+docker run --rm zego-crawler https://example.com
+docker run --rm zego-crawler https://www.zego.com --max-depth 1 -c 5 -t 15
+```
+
+`--rm` deletes the container when it exits. Everything after the image name is a crawler argument.
+
+The Dockerfile is two stages: a JDK 21 image builds `crawler.jar`, then a smaller JRE 21 image runs it. Outbound HTTP works on Docker’s default network.
+
+Save results from Docker:
+
+```bash
+docker run --rm zego-crawler https://example.com > pages.txt
+```
+
+### 2. Java 21 on the machine — no Gradle install
+
+The repo includes the Gradle wrapper (`./gradlew`), so reviewers do not install Gradle.
 
 ```bash
 cd java
 ./gradlew test
 ./gradlew shadowJar
 java -jar build/libs/crawler.jar --help
-java -jar build/libs/crawler.jar https://example.com --concurrency 10 --timeout 10
+java -jar build/libs/crawler.jar https://example.com
+./run_crawler.sh https://www.zego.com --max-depth 1 -c 5
+```
+
+`run_crawler.sh` builds the jar if it is missing, then runs it. That is also the command the Zego test harness can call.
+
+Needs: Java 21+ and a network. The wrapper downloads Gradle 9.8.1 the first time.
+
+### 3. Copy the jar to another machine
+
+After `./gradlew shadowJar`, `build/libs/crawler.jar` is a fat jar. It contains Jsoup, picocli, and the app. Copy that one file to any machine with Java 21:
+
+```bash
+java -jar crawler.jar https://example.com --max-depth 1
+```
+
+## How to crawl a site
+
+Keep depth and concurrency low on a site you do not own.
+
+```bash
+java -jar build/libs/crawler.jar https://www.zego.com --max-depth 1 -c 5 -t 15
 ```
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `-c`, `--concurrency` | 10 | Parallel fetches |
 | `-t`, `--timeout` | 10s | Per-request timeout |
-| `--max-depth` | 64 | Distance from the seed |
+| `--max-depth` | 64 | Distance from the start URL |
 | `--max-redirects` | 5 | Redirect hops per request |
 | `--max-response-bytes` | 2_000_000 | HTML size cap |
 | `--user-agent` | `ZegoCrawler/0.1` | Request identity |
 
-Page results go to stdout. The summary goes to stderr so results can be redirected on their own:
+Page URLs and links go to stdout. The summary goes to stderr:
 
 ```bash
 java -jar build/libs/crawler.jar https://example.com > pages.txt
 ```
+
+## Development environment and tools
+
+- **Language:** Java 21, chosen because it is an officially supported language for the exercise and because virtual threads keep concurrent I/O simple.
+- **IDE:** IntelliJ IDEA Community Edition. Gradle import, JUnit run configurations, and the debugger were used while reading each commit.
+- **Build:** Gradle 9.8.1 with the Gradle Wrapper, Shadow (fat jar), optional Docker image, Spotless + palantir-java-format, Checkstyle, and Error Prone. Compiler warnings are errors.
+- **Libraries:** `java.net.http.HttpClient` for HTTP, Jsoup for HTML parsing only, picocli for the CLI. No crawler framework.
+- **Tests:** JUnit 5 and AssertJ. HTTP tests use the JDK `HttpServer`. Crawler tests use an in-memory fake fetcher. No test hits the public internet.
+- **AI workflow:** Cursor was used as a pair-programming assistant. Each unit was designed first, implemented as a small commit, explained, and only then committed. I did not copy another candidate’s solution. The Zego evaluation harness (PR #26, not merged) was used as an acceptance check, not as the design.
 
 ## Architecture
 
@@ -197,4 +240,5 @@ java/
     url/          canonicalisation + scope
   src/test/java/  JUnit 5 tests
   run_crawler.sh  build if needed, then run the jar
+  Dockerfile      run anywhere without installing Java
 ```
