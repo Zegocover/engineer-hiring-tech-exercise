@@ -19,7 +19,8 @@ public sealed interface FetchResult permits FetchResult.Fetched, FetchResult.Ski
         HTTP_STATUS,
         UNSUPPORTED_CONTENT_TYPE,
         OUT_OF_SCOPE,
-        TOO_MANY_REDIRECTS
+        TOO_MANY_REDIRECTS,
+        PAGE_LIMIT
     }
 
     enum FailureReason {

@@ -24,16 +24,27 @@ class CrawlCommandTest {
                         "15",
                         "--max-depth",
                         "2",
+                        "--max-pages",
+                        "7",
                         "--max-redirects",
                         "1",
                         "--max-response-bytes",
                         "5000",
                         "--user-agent",
-                        "TestAgent/1.0");
+                        "TestAgent/1.0",
+                        "--no-robots");
 
         assertThat(command.settings())
                 .isEqualTo(new CrawlSettings(
-                        URI.create("https://example.com/"), 4, Duration.ofSeconds(15), 2, 1, 5000, "TestAgent/1.0"));
+                        URI.create("https://example.com/"),
+                        4,
+                        Duration.ofSeconds(15),
+                        2,
+                        7,
+                        1,
+                        5000,
+                        "TestAgent/1.0",
+                        false));
     }
 
     @Test
@@ -48,9 +59,11 @@ class CrawlCommandTest {
                         10,
                         Duration.ofSeconds(10),
                         64,
+                        0,
                         5,
                         2_000_000,
-                        CrawlCommand.DEFAULT_USER_AGENT));
+                        CrawlCommand.DEFAULT_USER_AGENT,
+                        true));
     }
 
     @Test

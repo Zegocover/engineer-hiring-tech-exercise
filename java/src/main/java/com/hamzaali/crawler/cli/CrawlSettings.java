@@ -10,9 +10,11 @@ public record CrawlSettings(
         int concurrency,
         Duration requestTimeout,
         int maxDepth,
+        int maxPages,
         int maxRedirects,
         int maxResponseBytes,
-        String userAgent) {
+        String userAgent,
+        boolean respectRobots) {
 
     public CrawlSettings {
         seed = Optional.ofNullable(seed)
@@ -26,6 +28,9 @@ public record CrawlSettings(
                 .orElseThrow(() -> new IllegalArgumentException("requestTimeout must be positive"));
         if (maxDepth < 0) {
             throw new IllegalArgumentException("maxDepth must not be negative");
+        }
+        if (maxPages < 0) {
+            throw new IllegalArgumentException("maxPages must not be negative");
         }
         if (maxRedirects < 0) {
             throw new IllegalArgumentException("maxRedirects must not be negative");

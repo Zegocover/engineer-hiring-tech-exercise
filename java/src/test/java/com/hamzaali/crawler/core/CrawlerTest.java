@@ -88,8 +88,26 @@ class CrawlerTest {
         CrawlStats stats = crawler(fetcher, listener, 2, 5).crawl(HOME);
 
         assertThat(listener.pages()).containsExactlyInAnyOrder(HOME, CONTACT);
+        assertThat(listener.failed()).containsExactly(ABOUT);
         assertThat(stats.pagesFetched()).isEqualTo(2);
         assertThat(stats.pagesFailed()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldStopFetchingOnceThePageCapIsReached() throws InterruptedException {
+        AtomicInteger fetches = new AtomicInteger();
+        PageFetcher fetcher = uri -> {
+            fetches.incrementAndGet();
+            return pages(Map.of(HOME, html(ABOUT, CONTACT), ABOUT, html(), CONTACT, html()))
+                    .fetch(uri);
+        };
+        RecordingListener listener = new RecordingListener();
+
+        CrawlStats stats = crawler(fetcher, listener, 2, 5, 1).crawl(HOME);
+
+        assertThat(listener.pages()).containsExactly(HOME);
+        assertThat(fetches).hasValue(1);
+        assertThat(stats.pagesFetched()).isEqualTo(1);
     }
 
     @Test
@@ -154,7 +172,18 @@ class CrawlerTest {
         assertThatIllegalArgumentException().isThrownBy(() -> crawler(pages(Map.of()), new RecordingListener(), 0, 5));
     }
 
+    @Test
+    void shouldRejectNegativePageCap() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> crawler(pages(Map.of()), new RecordingListener(), 1, 5, -1));
+    }
+
     private static Crawler crawler(PageFetcher fetcher, CrawlListener listener, int concurrency, int maxDepth) {
+        return crawler(fetcher, listener, concurrency, maxDepth, 0);
+    }
+
+    private static Crawler crawler(
+            PageFetcher fetcher, CrawlListener listener, int concurrency, int maxDepth, int maxPages) {
         return new Crawler(
                 new InMemoryFrontier(maxDepth),
                 fetcher,
@@ -162,6 +191,7 @@ class CrawlerTest {
                 new SameHostScope(HOME),
                 listener,
                 concurrency,
+                maxPages,
                 Clock.systemUTC());
     }
 
@@ -194,13 +224,24 @@ class CrawlerTest {
     private static final class RecordingListener implements CrawlListener {
         private final ConcurrentLinkedQueue<PageReport> reports = new ConcurrentLinkedQueue<>();
 
+        private final ConcurrentLinkedQueue<URI> failed = new ConcurrentLinkedQueue<>();
+
         @Override
         public void onPage(PageReport report) {
             reports.add(report);
         }
 
+        @Override
+        public void onFailed(URI uri, String reason, String detail) {
+            failed.add(uri);
+        }
+
         private Set<URI> pages() {
             return reports.stream().map(PageReport::page).collect(Collectors.toSet());
+        }
+
+        private Set<URI> failed() {
+            return Set.copyOf(failed);
         }
 
         private Set<URI> linksOn(URI page) {

@@ -3,6 +3,7 @@ package com.hamzaali.crawler.core;
 import com.hamzaali.crawler.fetch.FetchResult;
 import com.hamzaali.crawler.fetch.FetchResult.Failed;
 import com.hamzaali.crawler.fetch.FetchResult.Fetched;
+import com.hamzaali.crawler.fetch.FetchResult.SkipReason;
 import com.hamzaali.crawler.fetch.FetchResult.Skipped;
 import com.hamzaali.crawler.fetch.PageFetcher;
 import com.hamzaali.crawler.frontier.CrawlTask;
@@ -19,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,6 +38,7 @@ public final class Crawler {
     private final CrawlScope scope;
     private final CrawlListener listener;
     private final int concurrency;
+    private final int maxPages;
     private final Clock clock;
 
     /** Tasks still on the queue plus tasks a worker is currently fetching. */
@@ -44,6 +47,7 @@ public final class Crawler {
     private final AtomicInteger pagesFetched = new AtomicInteger();
     private final AtomicInteger pagesSkipped = new AtomicInteger();
     private final AtomicInteger pagesFailed = new AtomicInteger();
+    private final AtomicInteger pagesClaimed = new AtomicInteger();
 
     public Crawler(
             Frontier frontier,
@@ -52,6 +56,7 @@ public final class Crawler {
             CrawlScope scope,
             CrawlListener listener,
             int concurrency,
+            int maxPages,
             Clock clock) {
         this.frontier = required(frontier, "frontier");
         this.fetcher = required(fetcher, "fetcher");
@@ -62,7 +67,11 @@ public final class Crawler {
         if (concurrency < 1) {
             throw new IllegalArgumentException("concurrency must be at least 1");
         }
+        if (maxPages < 0) {
+            throw new IllegalArgumentException("maxPages must not be negative");
+        }
         this.concurrency = concurrency;
+        this.maxPages = maxPages;
     }
 
     public CrawlStats crawl(URI seed) throws InterruptedException {
@@ -114,7 +123,7 @@ public final class Crawler {
 
     private void crawlOnePage(CrawlTask task) {
         try {
-            recordResult(fetcher.fetch(task.uri()), task.depth());
+            recordResult(fetchWithinPageCap(task.uri()), task.depth());
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         } finally {
@@ -123,11 +132,24 @@ public final class Crawler {
         }
     }
 
+    private FetchResult fetchWithinPageCap(URI uri) throws InterruptedException {
+        if (claimPageSlot()) {
+            return fetcher.fetch(uri);
+        }
+        return new Skipped(uri, uri, OptionalInt.empty(), SkipReason.PAGE_LIMIT);
+    }
+
     private void recordResult(FetchResult result, int depth) {
         switch (result) {
             case Fetched fetched -> crawlDiscoveredLinks(fetched, depth);
-            case Skipped ignored -> pagesSkipped.incrementAndGet();
-            case Failed ignored -> pagesFailed.incrementAndGet();
+            case Skipped skipped -> {
+                pagesSkipped.incrementAndGet();
+                listener.onSkipped(skipped.finalUri(), skipped.reason().name());
+            }
+            case Failed failed -> {
+                pagesFailed.incrementAndGet();
+                listener.onFailed(failed.finalUri(), failed.reason().name(), failed.detail());
+            }
         }
     }
 
@@ -139,9 +161,28 @@ public final class Crawler {
     }
 
     private void accept(URI uri, int depth) {
-        if (frontier.offer(uri, depth)) {
+        if (!pageCapReached() && frontier.offer(uri, depth)) {
             unfinishedTasks.incrementAndGet();
         }
+    }
+
+    private boolean claimPageSlot() {
+        if (maxPages == 0) {
+            return true;
+        }
+        while (true) {
+            int claimed = pagesClaimed.get();
+            if (claimed >= maxPages) {
+                return false;
+            }
+            if (pagesClaimed.compareAndSet(claimed, claimed + 1)) {
+                return true;
+            }
+        }
+    }
+
+    private boolean pageCapReached() {
+        return maxPages > 0 && pagesClaimed.get() >= maxPages;
     }
 
     private boolean hasUnfinishedWork() {
@@ -153,6 +194,7 @@ public final class Crawler {
         pagesFetched.set(0);
         pagesSkipped.set(0);
         pagesFailed.set(0);
+        pagesClaimed.set(0);
     }
 
     private static URI canonicalSeed(URI seed) {

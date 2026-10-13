@@ -55,4 +55,26 @@ class ConsoleCrawlListenerTest {
                           https://example.com/contact
                         """);
     }
+
+    @Test
+    void shouldPrintSkippedAndFailedPagesToTheLogStream() {
+        ByteArrayOutputStream pages = new ByteArrayOutputStream();
+        ByteArrayOutputStream log = new ByteArrayOutputStream();
+        ConsoleCrawlListener listener = new ConsoleCrawlListener(
+                new PrintStream(pages, true, StandardCharsets.UTF_8),
+                new PrintStream(log, true, StandardCharsets.UTF_8));
+
+        listener.onPage(new PageReport(HOME, Set.of(ABOUT)));
+        listener.onSkipped(ABOUT, "HTTP_STATUS");
+        listener.onFailed(EXTERNAL, "CONNECTION", "refused");
+
+        assertThat(pages.toString(StandardCharsets.UTF_8)).isEqualTo("""
+                        https://example.com/
+                          https://example.com/about
+                        """);
+        assertThat(log.toString(StandardCharsets.UTF_8)).isEqualTo("""
+                        skipped https://example.com/about (HTTP_STATUS)
+                        failed https://other.example/news CONNECTION refused
+                        """);
+    }
 }

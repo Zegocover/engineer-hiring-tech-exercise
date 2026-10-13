@@ -29,12 +29,33 @@ class CrawlSettingsTest {
 
     @Test
     void shouldRejectConcurrencyBelowOne() {
-        assertThatIllegalArgumentException().isThrownBy(() -> settings(0, Duration.ofSeconds(1), 2, 3, 100, "agent"));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> settings(0, Duration.ofSeconds(1), 2, 0, 3, 100, "agent"));
+    }
+
+    @Test
+    void shouldRejectNegativePageCap() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> settings(1, Duration.ofSeconds(1), 2, -1, 3, 100, "agent"));
     }
 
     private static CrawlSettings settings(
-            int concurrency, Duration timeout, int maxDepth, int maxRedirects, int maxBytes, String userAgent) {
+            int concurrency,
+            Duration timeout,
+            int maxDepth,
+            int maxPages,
+            int maxRedirects,
+            int maxBytes,
+            String userAgent) {
         return new CrawlSettings(
-                URI.create("https://example.com/"), concurrency, timeout, maxDepth, maxRedirects, maxBytes, userAgent);
+                URI.create("https://example.com/"),
+                concurrency,
+                timeout,
+                maxDepth,
+                maxPages,
+                maxRedirects,
+                maxBytes,
+                userAgent,
+                true);
     }
 }

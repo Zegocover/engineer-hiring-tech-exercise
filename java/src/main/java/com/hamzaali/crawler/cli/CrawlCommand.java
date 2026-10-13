@@ -35,6 +35,11 @@ public final class CrawlCommand implements Callable<Integer> {
     private int maxDepth = 64;
 
     @Option(
+            names = {"--max-pages"},
+            description = "Maximum HTML pages to fetch. 0 means no limit. Default: ${DEFAULT-VALUE}")
+    private int maxPages = 0;
+
+    @Option(
             names = {"--max-redirects"},
             description = "Maximum redirects followed per request. Default: ${DEFAULT-VALUE}")
     private int maxRedirects = 5;
@@ -48,6 +53,9 @@ public final class CrawlCommand implements Callable<Integer> {
             names = {"--user-agent"},
             description = "User-Agent header sent with each request.")
     private String userAgent = DEFAULT_USER_AGENT;
+
+    @Option(names = "--no-robots", description = "Ignore robots.txt")
+    private boolean ignoreRobots;
 
     private final CrawlRunner runner;
 
@@ -71,9 +79,11 @@ public final class CrawlCommand implements Callable<Integer> {
                 concurrency,
                 Duration.ofSeconds(timeoutSeconds),
                 maxDepth,
+                maxPages,
                 maxRedirects,
                 maxResponseBytes,
-                userAgent);
+                userAgent,
+                !ignoreRobots);
     }
 
     public static int execute(String... args) {

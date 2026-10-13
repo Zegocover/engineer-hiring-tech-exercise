@@ -70,11 +70,13 @@ java -jar build/libs/crawler.jar https://www.zego.com --max-depth 1 -c 5 -t 15
 | `-c`, `--concurrency` | 10 | Parallel fetches |
 | `-t`, `--timeout` | 10s | Per-request timeout |
 | `--max-depth` | 64 | Distance from the start URL |
+| `--max-pages` | 0 | HTML pages to fetch; `0` means no limit |
 | `--max-redirects` | 5 | Redirect hops per request |
 | `--max-response-bytes` | 2_000_000 | HTML size cap |
 | `--user-agent` | `ZegoCrawler/0.1` | Request identity |
+| `--no-robots` | off | Ignore `robots.txt` |
 
-Page URLs and links go to stdout. The summary goes to stderr:
+Page URLs and links go to stdout so the evaluation harness can parse them. Skipped pages, failed pages, and the summary go to stderr:
 
 ```bash
 java -jar build/libs/crawler.jar https://example.com > pages.txt
@@ -101,16 +103,16 @@ CLI (picocli)
             -> Frontier          next URL + already seen
             -> PageFetcher       HTTP GET
             -> LinkExtractor     HTML -> links
-            -> CrawlScope        may we fetch this host?
-            -> CrawlListener     print the page
+            -> CrawlScope        may we fetch this host / path?
+            -> CrawlListener     print the page, skips, and failures
 ```
 
 | Type | Implementation | Replace later with |
 | --- | --- | --- |
 | `Frontier` | `InMemoryFrontier` | Redis set + list |
-| `PageFetcher` | `HttpPageFetcher` | retrying / rate-limited decorator |
+| `PageFetcher` | `RetryingPageFetcher` wrapping `HttpPageFetcher` | rate-limited decorator |
 | `LinkExtractor` | `JsoupLinkExtractor` | sitemap reader |
-| `CrawlScope` | `SameHostScope` | robots.txt + several hosts |
+| `CrawlScope` | `SameHostScope` and `RobotsTxtScope` via `CompositeScope` | several hosts |
 | `CrawlListener` | `ConsoleCrawlListener` | JSON or database writer |
 
 `CrawlRunner` is the only class that constructs the live implementations. `Crawler` never mentions HTTP, Jsoup, or `System.out`.
@@ -182,15 +184,17 @@ Built now:
 - exact-host scope
 - concurrent workers
 - redirect scope checks
-- size, depth, and timeout limits
+- size, depth, page-count, and timeout limits
+- `robots.txt` (missing or unreadable files are treated as allow-all)
+- retries on connection and timeout failures
+- skipped/failed pages printed on stderr
+- GitHub Actions for the Java build
 - fat jar + wrapper script
-- unit, fake-HTTP, and harness checks
+- unit, fake-HTTP, `CrawlRunner`, and harness checks
 
 Described, not built:
 
-- `robots.txt` and per-host delay
-- retries with jitter and `Retry-After`
-- a page-count cap in the crawler (the frontier already has depth)
+- per-host delay and `Retry-After`
 - persisting the frontier so a crawl can resume
 - treating `www` and apex as the same site, behind a flag
 
@@ -202,7 +206,7 @@ Described, not built:
 
 **Several machines.** Replace `InMemoryFrontier` with Redis (`SADD` for seen URLs, a list or stream for the queue) or Kafka. Workers stay stateless. Partition by host so politeness stays per site.
 
-**Retries and politeness.** Decorate `PageFetcher`: `new RetryingFetcher(new RateLimitedFetcher(httpFetcher))`. No change to `Crawler`.
+**Retries and politeness.** `RetryingPageFetcher` already wraps HTTP for connection and timeout failures. A rate-limited decorator would sit in the same place: `new RetryingPageFetcher(new RateLimitedFetcher(httpFetcher), …)`. No change to `Crawler`.
 
 **SSRF, if users can submit URLs.** Resolve the host and block private / link-local / metadata addresses, including after redirects. Not required for a local CLI.
 
@@ -213,12 +217,14 @@ Described, not built:
 | Area | What is covered |
 | --- | --- |
 | `UrlNormalizer` | fragments, ports, relative links, encoding, `sub.127.0.0.1` |
-| `SameHostScope` | subdomains, lookalike hosts, scheme/port differences |
+| `SameHostScope` / `RobotsTxtScope` / `CompositeScope` | host match, robots groups, AND composition |
 | `JsoupLinkExtractor` | relative links, `<base>`, entities, malformed HTML |
 | `HttpPageFetcher` | charset, 404, PDF, size cap, in-scope redirect, out-of-scope redirect, timeout |
+| `RetryingPageFetcher` | transient retry, no retry on 404, attempt cap |
 | `InMemoryFrontier` | first-seen, depth, two threads offering the same URL |
-| `Crawler` | cycles, external links, failed pages, depth, concurrency cap |
+| `Crawler` | cycles, external links, failed pages, depth, page cap, concurrency cap |
 | `CrawlCommand` | defaults, flags, `--help` |
+| `CrawlRunner` | local HTTP server: links, robots deny, 404 on stderr, `--max-pages` |
 
 Verified outside the unit tests:
 
