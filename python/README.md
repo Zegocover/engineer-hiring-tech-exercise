@@ -16,10 +16,10 @@ Zego is thoroughly committed to our values, which are the essence of our culture
 They are the foundation of our company and the guiding principles for our employees. Our values are:
 
 <table>
-    <tr><td><img src="../doc/assets/blaze_a_trail.png?raw=true" alt="Blaze a trail" width=50></td><td><b>Blaze a trail</b></td><td>Emphasize curiosity and creativity to disrupt the industry through experimentation and evolution.</td></tr>
-    <tr><td><img src="../doc/assets/drive_to_win.png?raw=true" alt="Drive to win" width=50></td><td><b>Drive to win</b></td><td>Strive for excellence by working smart, maintaining well-being, and fostering a safe, productive environment.</td></tr>
-    <tr><td><img src="../doc/assets/take_the_wheel.png?raw=true" alt="Take the wheel" width=50></td><td><b>Take the wheel</b></td><td>Encourage ownership and trust, empowering individuals to fulfil commitments and prioritize customers.</td></tr>
-    <tr><td><img src="../doc/assets/zego_before_ego.png?raw=true" alt="Zego before ego" width=50></td><td><b>Zego before ego</b></td><td>Promote unity by working as one team, celebrating diversity, and appreciating each individual's uniqueness.</td></tr>
+    <tr><td><b>Zego before ego</b></td><td>Put shared outcomes above personal credit with <b>no heroes or silos</b> by acting as <b>one team</b>—being direct, respectful, and collaborative while <b>growing yourself and others</b> through feedback and experimentation.</td></tr>
+    <tr><td><b>If not you, then who?</b></td><td><b>Take ownership</b> by spotting problems, acting without waiting, and bringing others with you, measuring success by <b>outcomes and impact</b> rather than effort, as we are each <b>accountable and empowered</b> to drive impact.</td></tr>
+    <tr><td><b>Deliver with urgency</b></td><td><b>Deliver fast and reliably</b> to exceed expectations while <b>challenging the status quo</b>, never settling and always raising standards.</td></tr>
+    <tr><td><b>Champion the good driver</b></td><td>Deeply <b>understand our customers</b> and their needs, prioritizing <b>customer outcomes</b> whenever designing and delivering our products and services.</td></tr>
 </table>
 
 ## The Engineering Team
@@ -75,6 +75,5 @@ the trade-offs you made during the development process, and aspects you might ha
 
 1. Create a repo.
 2. Tackle the test.
-3. Push the code back.
-4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller, @ZEGODiogoAlves, and @BarryMcAuley) as collaborators and tag us to review.
-5. Notify your TA so they can chase the reviewers.
+3. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller, @ZEGODiogoAlves and @BarryMcAuley) as collaborators.
+4. Paste the link to your repo in the Notes section of the submission link we emailed you, then click Submit assignment. In case you have any questions, please contact your Talent Acquisition person.
