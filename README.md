@@ -48,3 +48,29 @@ This repository contains the tests for the following roles:
 - [Front-end Developer](front-end/README.md)
 
 Please visit the appropriate folder for the test you are doing and follow the instructions in the README file.
+
+## Run everything with Docker
+
+The Python solution's crawler API and its web dashboard run together with one command. You need Docker with Compose
+v2, and Docker must be running. From this folder:
+
+```bash
+docker compose up --build
+```
+
+| What | Where |
+|---|---|
+| Dashboard | http://localhost:3000 |
+| Crawler API docs | http://localhost:8000/docs |
+
+Both services have health checks, and the dashboard starts once the crawler API is healthy. Stop with Ctrl+C, or
+`docker compose down` if you started it with `-d`.
+
+- **Ports:** `DASHBOARD_PORT=4000 BACKEND_PORT=9000 docker compose up --build`
+- **Crawler settings:** any `CRAWLER_API_*` variable set in your shell is passed to the crawler API, for example
+  `CRAWLER_API_DEFAULT_MAX_PAGES=50`. See [python/backend/README.md](python/backend/README.md#settings).
+- **Smoke test:** `bash scripts/docker-smoke.sh`, against a running stack. It runs a crawl end to end without
+  touching the internet, and CI runs it too.
+
+To crawl without the internet, start a crawl of `http://dashboard:3000/`, which is the dashboard as the crawler API
+container sees it.

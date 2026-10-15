@@ -1,0 +1,33 @@
+# The crawler API and its dashboard, together:
+#   docker compose up --build        dashboard: http://localhost:3000   API: http://localhost:8000/docs
+# Host ports: DASHBOARD_PORT, BACKEND_PORT. Crawler API settings: CRAWLER_API_* (see python/backend/README.md).
+name: site-crawler
+
+services:
+  backend:
+    build:
+      context: ./python # the backend installs the site-crawler library from python/
+      dockerfile: backend/Dockerfile
+    init: true
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    # Passed through only when set on the host; unset stays unset (empty values are rejected).
+    environment:
+      - CRAWLER_API_DEFAULT_MAX_PAGES
+      - CRAWLER_API_MAX_PAGES_LIMIT
+      - CRAWLER_API_DEFAULT_CONCURRENCY
+      - CRAWLER_API_MAX_CONCURRENCY
+      - CRAWLER_API_MAX_CONNECTIONS
+      - CRAWLER_API_REQUEST_TIMEOUT
+      - CRAWLER_API_USER_AGENT
+
+  dashboard:
+    build: ./front-end
+    init: true
+    environment:
+      CRAWLER_API_URL: http://backend:8000 # server-side only; the browser never sees it
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy

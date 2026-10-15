@@ -1,0 +1,17 @@
+# Build context for python/backend/Dockerfile: only the library and backend sources are needed.
+**/.venv
+**/__pycache__
+**/*.py[cod]
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+dist
+build
+.coverage
+.pre-commit-config.yaml
+tests
+examples
+backend/tests
+backend/Dockerfile
+*.stackdump

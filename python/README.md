@@ -78,3 +78,274 @@ the trade-offs you made during the development process, and aspects you might ha
 3. Push the code back.
 4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller, @ZEGODiogoAlves, and @BarryMcAuley) as collaborators and tag us to review.
 5. Notify your TA so they can chase the reviewers.
+
+---
+
+# Solution: `site-crawler`
+
+A fast crawler for a single host, packaged as a library with a `crawl` command-line tool. Consumers can replace how
+pages are **fetched**, how links are **parsed** and where results are **written** without touching the crawl
+logic.
+
+## Quick start
+
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+cd python
+uv sync
+uv run crawl https://books.toscrape.com/ --max-pages 20
+```
+
+Each page is printed with the links found on it, indented beneath it. Logs and a summary go to stderr, so stdout
+can be piped:
+
+```text
+https://books.toscrape.com/
+  https://books.toscrape.com/index.html
+  https://books.toscrape.com/catalogue/category/books_1/index.html
+  ...
+Crawled 20 pages (20 fetched, 0 errors, 0 blocked by robots.txt) in 1.84s
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `-c, --concurrency N` | 16 | parallel requests (also the HTTP connection pool size) |
+| `--max-pages N` | unlimited | fetch at most N pages |
+| `--max-depth N` | unlimited | follow links at most N hops from the base URL |
+| `--timeout S` | 10 | per-request timeout in seconds |
+| `--no-robots` | off | ignore `robots.txt` |
+| `--allow-host PATTERN` | none | also follow links to this host; repeatable. `docs.example.org`, `localhost:8001`, or `*.example.com` for any subdomain (not `example.com` itself) |
+| `--per-host-concurrency N` | no limit | at most N parallel requests to any one host |
+| `--format text\|jsonl` | text | `jsonl` prints one `{"url": ..., "links": [...]}` object per line |
+| `--user-agent S` | `site-crawler/0.1` | User-Agent header |
+| `-v` / `-vv` | warnings | info / debug logging |
+
+Exit codes: `0` on success (even if some pages failed), `1` if the base URL could not be fetched, `2` for invalid
+arguments.
+
+### Development
+
+```bash
+uv run ruff check && uv run ruff format --check   # lint + format
+uv run mypy                                       # strict type-check (src, tests, examples)
+uv run pytest                                     # 100+ tests, no network needed
+```
+
+CI (`.github/workflows/ci.yml`) runs these steps on Python 3.12 and 3.13. Pre-commit hooks are in
+`.pre-commit-config.yaml`.
+
+## Using it as a library
+
+```python
+from site_crawler import CrawlConfig, Crawler, PageResult
+
+
+class MyWriter:  # no base class needed
+    async def write(self, result: PageResult) -> None:
+        print(result.url, len(result.links))  # e.g. insert into a database instead
+
+    async def aclose(self) -> None:
+        pass
+
+
+stats = await Crawler(CrawlConfig("https://example.com/", max_pages=100), writer=MyWriter()).run()
+```
+
+Any of `fetcher=`, `parser=` and `writer=` can be passed. Whatever is left out uses the default (`DefaultHttpxFetcher`,
+`DefaultSelectolaxParser`, `TextWriter`). The defaults and `JsonLinesWriter` can also be imported from `site_crawler`, so
+they can be combined with a custom component. [`examples/custom_writer.py`](examples/custom_writer.py) builds a link graph
+and reports the most-linked URLs:
+
+```bash
+uv run python -m examples.custom_writer https://books.toscrape.com/ 20
+```
+
+## Architecture
+
+```
+            +-------------------------- Crawler.run() ---------------------------+
+            |                                                                    |
+ base URL --+--> _enqueue --> asyncio.Queue[(url, depth)] ----+                  |
+            |       ^   (seen-set, same host, depth,         |                  |
+            |       |    page budget, robots.txt)            v                  |
+            |       |                         N workers: Fetcher.fetch()         |
+            |       |                                    Parser.parse()          |
+            |       +--------- normalised links <-------- resolve + normalise    |
+            |                                               |                    |
+            |                                               v                    |
+            |                          asyncio.Queue[PageResult] (bounded)       |
+            |                                               |                    |
+            |                                               v                    |
+            |                          1 writer task: Writer.write()             |
+            +--------------------------------------------------------------------+
+```
+
+```
+src/site_crawler/
+  __init__.py              public API (everything below a consumer needs)
+  cli.py                   the `crawl` command
+  models/                  data exchanged between components
+    fetch.py               FetchResult
+    page.py                PageResult
+    config.py              CrawlConfig, ConfigError (validated, immutable)
+    stats.py               CrawlStats
+    errors.py              FetchError
+  interfaces/              what consumers implement
+    fetcher.py             Fetcher
+    parser.py              Parser
+    writer.py              Writer
+  fetchers/                default implementations, grouped by role
+    httpx_fetcher.py       DefaultHttpxFetcher
+  parsers/
+    selectolax_parser.py   DefaultSelectolaxParser
+  writers/
+    text.py                TextWriter
+    jsonl.py               JsonLinesWriter
+  core/                    the crawl engine
+    crawler.py             Crawler: frontier, workers, writer task, error policy
+    urls.py                resolve / normalise / same-host
+    robots.py              robots.txt gate
+```
+
+Each layer only imports the layers before it:
+`models <- interfaces <- fetchers / parsers / writers <- core <- cli`.
+`tests/test_package.py` enforces this, and also checks that every subpackage imports on its own in a fresh
+interpreter, so import cycles can't creep in. A new component, such as a database writer, has an obvious home:
+`writers/sql.py`.
+
+## Design decisions and trade-offs
+
+The planning artefacts (proposal, behaviour specs with testable scenarios, design and task list) were written
+before the code, using [OpenSpec](https://github.com/Fission-AI/OpenSpec). The main points:
+
+**1. Async I/O with a fixed pool of workers.** Crawling is almost entirely waiting on the network, so `asyncio`
+gives high concurrency on one thread with no locking. A fixed pool of N workers pulling from a queue keeps memory
+and open sockets bounded, unlike `gather()` over a growing list of tasks. One `httpx.AsyncClient` is shared, so
+connections are kept alive and pooled, with its connection limit matching the concurrency.
+*Considered:* threads (GIL overhead, locking needed for the seen-set) and multiprocessing (too heavy for I/O-bound
+work).
+
+**2. Identical workers plus a single writer, rather than separate fetch/parse/write pools.** My first sketch had a
+separate worker type for each stage. Parsing with selectolax takes microseconds, so extra queue hand-offs would
+add latency and complexity for no gain. Each worker does fetch, then parse, then enqueue. Exactly one writer task
+consumes results, so output never interleaves and consumer writers never need locking. The bounded results queue
+applies backpressure if the writer is slow.
+
+**3. The frontier is private state with a simple de-duplication rule.** The frontier is a queue plus a seen-set.
+A URL is marked seen when it is *queued*, not when it is fetched. The check and the insert happen with no `await`
+between them, so on a single-threaded event loop two workers can never fetch the same URL. `queue.join()` signals
+completion, and every worker calls `task_done()` in a `finally` block so a failure can't hang the crawl (there's a
+test for this). I kept the frontier out of the public interface on purpose: it's the part that would need to move
+into shared storage for distributed crawling (see below), and exposing it now would be premature abstraction.
+
+**4. Extension points are `typing.Protocol`s, and the crawler owns correctness.** Consumers implement
+`Fetcher`, `Parser` and `Writer` structurally, with no inheritance (the example and tests use plain classes). A
+parser only returns *raw* href strings. The crawler resolves them against the final URL after redirects,
+normalises, filters and de-duplicates them, so a buggy parser can get extraction wrong but can never make the
+crawl leave the host or fetch a page twice. *Considered:* ABCs, which report a missing method when the object is
+created but force the consumer to inherit from package classes.
+
+**5. Errors.** A `FetchError` (network failure, timeout or HTTP error after retries) is logged and counted, and the
+crawl continues. Any *other* exception from a component is treated as a bug: the crawl stops, the writer and
+fetcher are still closed, and the exception reaches the caller. Silently swallowing it would produce partial
+output that looks complete. Retries live in the HTTP fetcher (exponential backoff with jitter, honouring
+`Retry-After`, for timeouts, connection errors, 429 and 5xx) because they're protocol-specific.
+
+**6. Libraries.** `httpx` for its mature, typed async API and good test tooling (`respx`); `aiohttp` is slightly
+faster but weaker on both. `selectolax` (Lexbor) for parsing: many times faster than BeautifulSoup and
+HTML5-compliant on malformed markup. Bodies are only downloaded for textual responses and are capped at 10 MB, so
+PDFs and images cost a request but no bandwidth.
+
+**7. Normalisation is conservative.** The crawler lowercases scheme and host, drops default ports and fragments,
+and turns an empty path into `/`. It does *not* strip trailing slashes or sort query parameters, because either can
+change which resource a server returns. I chose accuracy over a few saved requests.
+
+### Interpretations of the brief
+
+- **"All the URLs it finds on the page"** means `<a href>` links, including off-domain ones (reported but not
+  followed). `<link>`, `<img>` and `<script>` are resources, not navigation, so they're excluded.
+- **"Not subdomains"** means an exact host match, so `www.example.com` is a *different* host from `example.com`.
+  Scheme is ignored, so `http://` and `https://` links on the crawl host are in scope.
+- **robots.txt** is respected by default (except for the base URL, which the user asked for explicitly).
+- **Crossing domains is opt-in.** By default the crawl stays on the base URL's exact host, as the brief asks.
+  `--allow-host` adds hosts to the scope (an exact host, or `*.domain` for any subdomain); links elsewhere are
+  still only reported. Each host's own `robots.txt` is read once, the first time the crawl reaches that host,
+  before any of its URLs are fetched; disallowed URLs never use up the page budget.
+  Disallowed URLs are still reported as links on the pages that contain them. `Crawl-delay` is not honoured.
+- When a redirect lands on a page that is already queued, the page is reported once, under its final URL.
+
+## Testing
+
+- **Unit tests** cover URL handling, config validation, each default component (`respx` mocks HTTP: retries,
+  redirects, timeouts, body cap), the package layering (`tests/test_package.py`), and the crawl engine using
+  in-memory fakes (`tests/fakes.py`): cycles, de-duplication
+  under concurrency, limits, redirects, non-HTML responses, robots.txt and the error policy.
+- **An end-to-end test** (`tests/test_end_to_end.py`) crawls a mocked site through the *real* fetcher and parser:
+  a cycle, an internal redirect, an off-host redirect, a PDF, an external link, a 500 page and a robots-disallowed
+  path. It caught a real bug: the fetcher skipped `text/plain` bodies, which silently emptied `robots.txt`.
+- **CLI tests** check stdout, stderr and exit codes. The tests need no network access.
+
+## Scaling beyond one site and the CLI
+
+A command-line tool suits one-off crawls of a single site. To crawl many domains continuously, I would turn this
+into a service:
+
+```
+ React UI --> API (FastAPI) --> job queue (per-domain partitions) --> crawler workers (this package)
+                  |                                                        |
+                  +----------------- results DB / visualiser <-------------+
+```
+
+- **Job API** instead of CLI arguments: submit, monitor and cancel crawls, and get results on demand. A web UI or
+  visualiser reads from the database.
+- **Shared frontier:** move the queue and seen-set into Redis (or a Bloom filter for memory) so stateless workers
+  can scale out. This is the frontier interface I deliberately didn't extract yet.
+- **Per-domain politeness:** partition work by host, with rate limits and `Crawl-delay` per domain, so many sites
+  are crawled concurrently while each one is visited slowly.
+- **Storage** is just another `Writer`. A natural schema is `pages(id, domain, url UNIQUE, status, fetched_at)` plus
+  `links(source_page_id, target_url)` as a list of link edges between pages.
+
+### HTTP backend
+
+The first step of this is built: [`backend/`](backend/README.md) is a FastAPI service that runs many crawls
+at once in one process. It lets clients start crawls, poll their status, page through the pages and links found,
+and cancel them. It depends on this package by path and uses only its public extension points. It wires its own
+fetcher, which shares one connection pool across all crawls, and a writer that records each page on its job,
+instead of relying on the defaults. Jobs live in memory; the queue, shared frontier and database above are still
+future work.
+
+### Background daemon
+
+[`daemon/`](daemon/README.md) is `crawld`, a local daemon that keeps the command line as the interface. You submit
+jobs from a shell and get your prompt back. Jobs wait in a queue, a bounded number run at once, and their results
+go into a database (SQLite by default, PostgreSQL optionally), so they survive the jobs ending and the daemon
+restarting. It implements all three extension points itself: a fetcher over one shared connection pool, a parser
+that reuses links already parsed from identical pages (a parse cache in the same database), and a writer that stores
+pages and links as the crawl runs.
+
+## Future work
+
+- Per-host request rate limiting and `Crawl-delay`.
+- A per-host scheduler (one queue per host, round robin). `--per-host-concurrency` uses a semaphore per host,
+  so a worker waiting on a host at its limit doesn't pick up other hosts' work meanwhile; set `--concurrency`
+  to about the per-host limit times the number of busy hosts.
+- Sitemap discovery as extra seeds. Optional `<link rel=canonical>` handling to merge duplicate pages.
+- Running a slow consumer parser off the event loop (`asyncio.to_thread`) if profiling shows parsing blocks the
+  workers.
+- Resumable crawls: persist the frontier so an interrupted crawl can continue.
+- HTTP/2 (`httpx[http2]`) for sites that support it.
+
+## Tools and AI usage
+
+- **IDE:** Visual Studio Code.
+- **AI:** Claude Code (Anthropic's agentic coding assistant, running in the VS Code extension) with the OpenSpec
+  workflow:
+  1. `/opsx:explore` to talk through the design: I brought a draw.io architecture sketch (manager, request/parse/
+     write workers, datastore, web UI), and the discussion simplified it to the design above (identical workers,
+     the frontier kept private, storage as a `Writer`, the web parts kept as the scaling story).
+  2. `/opsx:propose` to generate the proposal, the specs (behaviour scenarios that became test cases), the design
+     and the task list.
+  3. `/opsx:apply` to implement the tasks in order, with lint, type-check and tests run after each task.
+- **Verification:** every task had a concrete check; ruff, mypy `--strict` and pytest run in CI; and the crawler
+  was smoke-tested against https://books.toscrape.com/.
