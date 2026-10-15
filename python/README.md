@@ -315,6 +315,15 @@ fetcher, which shares one connection pool across all crawls, and a writer that r
 instead of relying on the defaults. Jobs live in memory; the queue, shared frontier and database above are still
 future work.
 
+### Background daemon
+
+[`daemon/`](daemon/README.md) is `crawld`, a local daemon that keeps the command line as the interface. You submit
+jobs from a shell and get your prompt back. Jobs wait in a queue, a bounded number run at once, and their results
+go into a database (SQLite by default, PostgreSQL optionally), so they survive the jobs ending and the daemon
+restarting. It implements all three extension points itself: a fetcher over one shared connection pool, a parser
+that reuses links already parsed from identical pages (a parse cache in the same database), and a writer that stores
+pages and links as the crawl runs.
+
 ## Future work
 
 - Per-host request rate limiting and `Crawl-delay`.

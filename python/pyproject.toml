@@ -29,15 +29,15 @@ build-backend = "hatchling.build"
 packages = ["src/site_crawler"]
 
 [tool.hatch.build.targets.sdist]
-# The FastAPI backend is a separate project nested here; it is not part of this package.
-exclude = ["/backend"]
+# The FastAPI backend and the crawl daemon are separate projects nested here; they are not part of this package.
+exclude = ["/backend", "/daemon"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests", "examples"]
-# The nested backend project is linted from its own folder with its own config.
-extend-exclude = ["backend"]
+# The nested backend and daemon projects are linted from their own folders with their own config.
+extend-exclude = ["backend", "daemon"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "PT"]
