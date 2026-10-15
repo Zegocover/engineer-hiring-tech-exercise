@@ -75,7 +75,5 @@ the trade-offs you made during the development process, and aspects you might ha
 
 1. Create a repo.
 2. Tackle the test.
-3. Push the code back.
-4. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller, @ZEGODiogoAlves, and @BarryMcAuley) as collaborators and tag us to review.
-5. Add the link to your repository at the top of this README.
-6. Download your repository as a ZIP (Code > Download ZIP) and upload it using the submission link in your email. The reviewers are notified automatically.
+3. Add us (@nktori, @danyal-zego, @bogdangoie, @cypherlou, @marliechiller, @ZEGODiogoAlves and @BarryMcAuley) as collaborators.
+4. Paste the link to your repo in the Notes section of the submission link we emailed you, then click Submit assignment. In case you have any questions, please contact your Talent Acquisition person.
